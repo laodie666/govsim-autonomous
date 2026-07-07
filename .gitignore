@@ -4,6 +4,7 @@ __pycache__/
 .hypothesis/
 .opencode/
 .superpowers/
+visualizer/
 outputs/*.json
 !outputs/sim_11141c86bf1d.json
 !outputs/sim_11141c86bf1d_prompts.json
