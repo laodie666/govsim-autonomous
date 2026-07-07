@@ -20,17 +20,23 @@ Penalties and fines are configurable (common pool, leader stash, redistribute, o
 
 ---
 
+## Requirements
+
+```bash
+pip install openai pyyaml pytest
+```
+
+Optionally for coverage: `pip install pytest-cov`
+
 ## Quick Start
 
 ```bash
-# Set API key
-$env:DEEPSEEK_API_KEY = "sk-..."
-
-# Run with default drama config
-python -m simulation.main --config config/personalities_run.yaml --seed 42 --verbose
-
-# Run with stub (deterministic, no LLM calls)
+# Run with stub first (deterministic, no API calls)
 python -m simulation.main --config config/personalities_run.yaml --stub --verbose
+
+# Set API key and run with real LLM
+$env:DEEPSEEK_API_KEY = "sk-..."
+python -m simulation.main --config config/personalities_run.yaml --seed 42 --verbose
 
 # Run with full prompt recording (writes prompts to separate debug file)
 python -m simulation.main --config config/personalities_run.yaml --seed 42 --record-prompts
