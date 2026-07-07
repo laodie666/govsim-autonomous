@@ -1,0 +1,894 @@
+{
+  "run_id": "sim_a9f1508390f2",
+  "config": {
+    "simulation": {
+      "num_rounds": 2,
+      "turns_per_phase": 2
+    },
+    "agents": {
+      "names": [
+        "Alice",
+        "Bob",
+        "Charlie"
+      ],
+      "starting_resources": 50.0
+    },
+    "resources": {
+      "carrying_capacity": 100.0,
+      "regeneration_factor": 1.5
+    },
+    "leader": {
+      "fine_destination": "common_pool",
+      "default_limit": 10.0,
+      "default_penalty_rate": 0.0
+    },
+    "election": {
+      "method": "plurality",
+      "first_election_round": 2
+    },
+    "llm": {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "temperature": 0.7,
+      "max_tokens": 500
+    },
+    "output": {
+      "format": "json",
+      "include_full_transcripts": true,
+      "include_agent_memories": true
+    }
+  },
+  "started_at": "2026-07-05T15:42:06Z",
+  "rounds": [
+    {
+      "round": 1,
+      "phases": [
+        {
+          "phase": "free_interaction",
+          "turns": [
+            {
+              "turn": 1,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "bob": 50.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 2,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "alice": 50.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 3,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "charlie": 50.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 4,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "bob": 50.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 5,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "alice": 50.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 6,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "charlie": 50.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            }
+          ]
+        },
+        {
+          "phase": "harvesting",
+          "turns": [
+            {
+              "turn": 7,
+              "agent": "charlie",
+              "action": "fish",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": 8.0,
+              "reasoning": ".",
+              "significance": "economic",
+              "resources_before": {
+                "charlie": 50.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "charlie": 58.0,
+                "pool": 92.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 8,
+              "agent": "bob",
+              "action": "fish",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": 3.0,
+              "reasoning": ".",
+              "significance": "economic",
+              "resources_before": {
+                "bob": 50.0,
+                "pool": 92.0
+              },
+              "resources_after": {
+                "bob": 53.0,
+                "pool": 89.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 9,
+              "agent": "alice",
+              "action": "fish",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": 7.0,
+              "reasoning": ".",
+              "significance": "economic",
+              "resources_before": {
+                "alice": 50.0,
+                "pool": 89.0
+              },
+              "resources_after": {
+                "alice": 57.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            }
+          ]
+        },
+        {
+          "phase": "free_interaction",
+          "turns": [
+            {
+              "turn": 10,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 53.0,
+                "pool": 82.0
+              },
+              "resources_after": {
+                "bob": 53.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 11,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 58.0,
+                "pool": 82.0
+              },
+              "resources_after": {
+                "charlie": 58.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 12,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 57.0,
+                "pool": 82.0
+              },
+              "resources_after": {
+                "alice": 57.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 13,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 53.0,
+                "pool": 82.0
+              },
+              "resources_after": {
+                "bob": 53.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 14,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 58.0,
+                "pool": 82.0
+              },
+              "resources_after": {
+                "charlie": 58.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 15,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 57.0,
+                "pool": 82.0
+              },
+              "resources_after": {
+                "alice": 57.0,
+                "pool": 82.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "phases": [
+        {
+          "phase": "free_interaction",
+          "turns": [
+            {
+              "turn": 1,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 53.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "bob": 53.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 2,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 58.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "charlie": 58.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 3,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 57.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "alice": 57.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 4,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 53.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "bob": 53.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 5,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 58.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "charlie": 58.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 6,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 57.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "alice": 57.0,
+                "pool": 100.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            }
+          ]
+        },
+        {
+          "phase": "election",
+          "turns": [
+            {
+              "turn": 7,
+              "agent": "alice",
+              "action": "nominate",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": ".",
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 57.0
+              },
+              "resources_after": {
+                "alice": 57.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 8,
+              "agent": "bob",
+              "action": "nominate",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": ".",
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 53.0
+              },
+              "resources_after": {
+                "bob": 53.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 9,
+              "agent": "charlie",
+              "action": "nominate",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": ".",
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 58.0
+              },
+              "resources_after": {
+                "charlie": 58.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 4,
+              "agent": "alice",
+              "action": "vote",
+              "target": "alice",
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": "",
+              "significance": null,
+              "resources_before": {},
+              "resources_after": {},
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 5,
+              "agent": "bob",
+              "action": "vote",
+              "target": "alice",
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": "",
+              "significance": null,
+              "resources_before": {},
+              "resources_after": {},
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 6,
+              "agent": "charlie",
+              "action": "vote",
+              "target": "bob",
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": "",
+              "significance": null,
+              "resources_before": {},
+              "resources_after": {},
+              "leader_limit": null,
+              "penalty": null
+            }
+          ],
+          "result": {
+            "winner": "alice",
+            "votes": {
+              "alice": 2,
+              "bob": 1
+            },
+            "voter_map": {
+              "alice": "alice",
+              "bob": "alice",
+              "charlie": "bob"
+            },
+            "acceptance_message": "."
+          }
+        },
+        {
+          "phase": "harvesting",
+          "turns": [
+            {
+              "turn": 13,
+              "agent": "alice",
+              "action": "fish",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": 7.0,
+              "reasoning": ".",
+              "significance": "economic",
+              "resources_before": {
+                "alice": 57.0,
+                "pool": 100.0
+              },
+              "resources_after": {
+                "alice": 60.0,
+                "pool": 97.0
+              },
+              "leader_limit": 5.0,
+              "penalty": {
+                "imposed_by": "alice",
+                "amount": 4.0,
+                "destination": "common_pool"
+              }
+            },
+            {
+              "turn": 14,
+              "agent": "bob",
+              "action": "fish",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": 4.0,
+              "reasoning": ".",
+              "significance": "economic",
+              "resources_before": {
+                "bob": 53.0,
+                "pool": 97.0
+              },
+              "resources_after": {
+                "bob": 57.0,
+                "pool": 93.0
+              },
+              "leader_limit": 5.0,
+              "penalty": null
+            },
+            {
+              "turn": 15,
+              "agent": "charlie",
+              "action": "fish",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": 5.0,
+              "reasoning": ".",
+              "significance": "economic",
+              "resources_before": {
+                "charlie": 58.0,
+                "pool": 93.0
+              },
+              "resources_after": {
+                "charlie": 63.0,
+                "pool": 88.0
+              },
+              "leader_limit": 5.0,
+              "penalty": null
+            }
+          ]
+        },
+        {
+          "phase": "free_interaction",
+          "turns": [
+            {
+              "turn": 16,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 57.0,
+                "pool": 88.0
+              },
+              "resources_after": {
+                "bob": 57.0,
+                "pool": 88.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 17,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 63.0,
+                "pool": 88.0
+              },
+              "resources_after": {
+                "charlie": 63.0,
+                "pool": 88.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 18,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 60.0,
+                "pool": 88.0
+              },
+              "resources_after": {
+                "alice": 60.0,
+                "pool": 88.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 19,
+              "agent": "bob",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "bob": 57.0,
+                "pool": 88.0
+              },
+              "resources_after": {
+                "bob": 57.0,
+                "pool": 88.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 20,
+              "agent": "charlie",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "charlie": 63.0,
+                "pool": 88.0
+              },
+              "resources_after": {
+                "charlie": 63.0,
+                "pool": 88.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 21,
+              "agent": "alice",
+              "action": "pass",
+              "target": null,
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": ".",
+              "significance": null,
+              "resources_before": {
+                "alice": 60.0,
+                "pool": 88.0
+              },
+              "resources_after": {
+                "alice": 60.0,
+                "pool": 88.0
+              },
+              "leader_limit": null,
+              "penalty": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "by_round": [
+      {
+        "round": 1,
+        "total_harvest": 18.0,
+        "pool_remaining": 82.0,
+        "gini_coefficient": 0.019841269841269993,
+        "violations": 0,
+        "penalties_imposed": 0
+      },
+      {
+        "round": 2,
+        "total_harvest": 16.0,
+        "pool_remaining": 88.0,
+        "gini_coefficient": 0.022222222222222365,
+        "violations": 1,
+        "penalties_imposed": 1
+      }
+    ]
+  }
+}

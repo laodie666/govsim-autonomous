@@ -1,0 +1,18 @@
+simulation:
+  num_rounds: 3
+  turns_per_phase: 10
+agents:
+  names: [John, Kate, Jack, Emma, Luke]
+  starting_resources: 20.0
+resources:
+  carrying_capacity: 100.0
+  regeneration_factor: 2.0
+  fish_per_harvest: 10.0
+leader:
+  fine_destination: common_pool
+  default_limit: 10.0
+  default_penalty_rate: 0.5
+  candidacy_cost: 5.0
+election:
+  method: plurality
+  elections_every_round: true

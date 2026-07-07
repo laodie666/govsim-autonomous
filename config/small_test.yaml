@@ -1,0 +1,33 @@
+# Small test config — fast turnaround, low token burn
+simulation:
+  num_rounds: 2
+  turns_per_phase: 2
+
+agents:
+  names: ["Emma", "Luke", "Jack"]
+  starting_resources: 50.0
+
+resources:
+  carrying_capacity: 100.0
+  regeneration_factor: 1.5
+  fish_per_harvest: 5.0
+
+leader:
+  fine_destination: common_pool
+  default_limit: 10.0
+  default_penalty_rate: 2.0
+
+election:
+  method: plurality
+  first_election_round: 2
+
+llm:
+  provider: deepseek
+  model: deepseek-chat
+  temperature: 0.7
+  max_tokens: 600
+
+output:
+  format: json
+  include_full_transcripts: true
+  include_agent_memories: true
