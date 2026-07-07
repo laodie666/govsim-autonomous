@@ -1,6 +1,6 @@
 simulation:
-  num_rounds: 1
-  turns_per_phase: 5
+  num_rounds: 3
+  turns_per_phase: 8
 agents:
   names: [Sage, River, Ash, Quinn, Kai]
   starting_resources: 30.0
