@@ -1,8 +1,6 @@
 # GovSim-Autonomous
 
-Multi-agent LLM-driven common-pool fishery simulation. Five agents (Sage, River, Ash, Quinn, Kai) fish a shared lake over multiple rounds while an elected leader sets harvest policy. Agents use private channels to lobby, bribe, form coalitions, and negotiate — designed to produce emergent strategic behavior like vote-buying, coalition formation, betrayal, and defection.
-
-Designed and directed by Jinesis.
+Multi-agent LLM-driven common-pool fishery simulation. Agents fish a shared lake over multiple rounds while an elected leader sets harvest policy. Agents can use private channels to lobby, bribe, form coalitions, and negotiate — designed to produce emergent strategic behavior like vote-buying, coalition formation, betrayal, and defection.
 
 ---
 
@@ -84,7 +82,7 @@ resources:
   carrying_capacity: 200.0
   regeneration_factor: 2.0
 leader:
-  fine_destination: common_pool   # or leader_stash, redistribute, destroyed
+  fine_destination: destroyed   # common_pool, leader_stash, redistribute, destroyed
   default_limit: 6.0
   default_penalty_rate: 1.0
   candidacy_cost: 5.0
@@ -143,7 +141,6 @@ With `--record-prompts`, a separate `<run_id>_prompts.json` is saved containing 
 
 ## Key Design Features
 
-- **Prompt split**: World rules + actions + JSON format live in the system prompt (static). Only dynamic state (identity, resources, log) changes each turn. Keeps prompts compact (~1-2K instead of ballooning to 15K).
 - **[public] tags**: Every message in the log is tagged with its channel. `[public]` or `[channel_name]`. Agents can see who left public to join private channels.
 - **"Your last action"**: The agent sees its own last action in the state section, preventing repetition.
 - **Phase context**: Each free interaction phase gets a one-line objective ("An election follows this phase. After that: harvest." / "Discuss what happened and plan for next round.").

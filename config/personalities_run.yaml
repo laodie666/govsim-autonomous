@@ -15,7 +15,7 @@ resources:
   regeneration_factor: 2.0
   fish_per_harvest: 5.0
 leader:
-  fine_destination: common_pool
+  fine_destination: destroyed
   default_limit: 6.0
   default_penalty_rate: 1.0
   candidacy_cost: 5.0
