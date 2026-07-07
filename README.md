@@ -28,6 +28,18 @@ pip install openai pyyaml pytest
 
 Optionally for coverage: `pip install pytest-cov`
 
+## API Key
+
+Requires a DeepSeek API key. Set it as an environment variable:
+
+```bash
+$env:DEEPSEEK_API_KEY = "sk-..."
+```
+
+To use a different OpenAI-compatible provider, modify `simulation/llm_client.py` line ~68 to change `base_url` and set the appropriate API key.
+
+Run with `--stub` for deterministic simulation without any API calls.
+
 ## Quick Start
 
 ```bash
