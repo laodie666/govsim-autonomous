@@ -138,10 +138,3 @@ The main output JSON contains:
 - Metrics (gini coefficient, total harvest, violations)
 
 With `--record-prompts`, a separate `<run_id>_prompts.json` is saved containing the full prompt text and LLM response for every single call — useful for debugging what the agent actually saw.
-
-## Key Design Features
-
-- **[public] tags**: Every message in the log is tagged with its channel. `[public]` or `[channel_name]`. Agents can see who left public to join private channels.
-- **"Your last action"**: The agent sees its own last action in the state section, preventing repetition.
-- **Phase context**: Each free interaction phase gets a one-line objective ("An election follows this phase. After that: harvest." / "Discuss what happened and plan for next round.").
-- **Left/returned notifications**: When an agent leaves public for a private channel, remaining public members see "X left public". When they return, "X returned to public".
