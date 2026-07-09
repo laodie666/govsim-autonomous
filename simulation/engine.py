@@ -6,6 +6,7 @@ about DeepSeek, OpenAI, or any specific provider.
 
 from __future__ import annotations
 
+import concurrent.futures
 import random
 from typing import Any, Optional
 
@@ -362,7 +363,11 @@ class Engine:
         # and is serialized once at the end in _set_recorder_metadata
 
     def _run_free_interaction(self) -> None:
-        """Run a free interaction phase -- agents talk, transfer, or pass."""
+        """Run a free interaction phase -- agents talk, transfer, or pass.
+
+        Agents decide in parallel (Phase 1: read-only LLM calls),
+        then execute sequentially (Phase 2: state mutations).
+        """
         self.current_phase = "free_interaction"
         self.recorder.start_phase("free_interaction")
 
@@ -376,9 +381,20 @@ class Engine:
             self._current_turn_in_phase = t + 1
             if self.verbose:
                 print(f"[sim]     Turn {t+1}/{turns}...")
+
+            # Phase 1: All agents decide in parallel (read-only)
+            decisions: dict[str, tuple] = {}
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(order)) as ex:
+                futures = {ex.submit(self._decide_for_agent, a): a for a in order}
+                for future in concurrent.futures.as_completed(futures):
+                    agent, ctx, resp, norm = future.result()
+                    decisions[agent.id] = (ctx, resp, norm)
+
+            # Phase 2: Execute sequentially in order
             for agent in order:
                 self.turn_counter += 1
-                self._handle_agent_turn(agent)
+                ctx, resp, norm = decisions[agent.id]
+                self._execute_decision(agent, ctx, resp, norm)
 
     def _shuffled_agents(self) -> list[Agent]:
         """Return agents in a random order (seeded for reproducibility)."""
@@ -387,13 +403,22 @@ class Engine:
         return agents
 
     def _handle_agent_turn(self, agent: Agent) -> None:
-        """Process a single agent's decision for the current phase."""
-        # Build context for the LLM
+        """Process a single agent's decision (sequential, backward-compatible)."""
+        agent, context, response, normalized = self._decide_for_agent(agent)
+        self.turn_counter += 1
+        self._execute_decision(agent, context, response, normalized)
+
+    def _decide_for_agent(self, agent: Agent) -> tuple[Agent, str, LLMResponse, str]:
+        """Phase 1: Build context + call LLM (read-only, safe to parallelize).
+        Returns (agent, context, response, normalized_action).
+        """
         context = self._build_context(agent)
-
-        # Get LLM decision
         response = self.llm.decide(context)
+        normalized = self._normalize_action(response.action)
+        return agent, context, response, normalized
 
+    def _execute_decision(self, agent: Agent, context: str, response: LLMResponse, normalized: str) -> None:
+        """Phase 2: Execute action + record state (write, must be sequential)."""
         if self.verbose:
             if response.action not in ("pass",):
                 msg = response.message or ""
@@ -401,9 +426,6 @@ class Engine:
                 rsn = response.reasoning or ""
                 rsn_snip = f" ({rsn[:40]})" if rsn and not msg else ""
                 print(f"[sim]       {agent.name}: {response.action}{msg_snip}{rsn_snip}")
-
-        # Normalize the action to handle LLM aliases ("speak" → "public_talk")
-        normalized = self._normalize_action(response.action)
 
         # Record the event with resource state before
         resources_before = {

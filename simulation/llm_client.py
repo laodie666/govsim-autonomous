@@ -7,6 +7,7 @@ Easily extendable to other providers.
 from __future__ import annotations
 
 import json
+import threading
 import time
 import re
 from typing import Optional
@@ -86,6 +87,7 @@ class DeepSeekLLM(LLMInterface):
             base_url=base_url,
         )
         self._stats = {"calls": 0, "total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_cost": 0.0, "total_time_ms": 0}
+        self._stats_lock = threading.Lock()
         self._decide_system = self._build_decide_system()
 
     def _call(self, system: str, user: str) -> str:
@@ -107,16 +109,17 @@ class DeepSeekLLM(LLMInterface):
                 content = response.choices[0].message.content or ""
                 usage = response.usage
 
-                self._stats["calls"] += 1
-                if usage:
-                    self._stats["total_tokens"] += usage.total_tokens or 0
-                    self._stats["prompt_tokens"] += usage.prompt_tokens or 0
-                    self._stats["completion_tokens"] += usage.completion_tokens or 0
-                    cost = getattr(usage, "cost", None)
-                    if cost is None and usage.model_extra:
-                        cost = usage.model_extra.get("cost", 0.0)
-                    self._stats["total_cost"] += cost or 0.0
-                self._stats["total_time_ms"] += elapsed_ms
+                with self._stats_lock:
+                    self._stats["calls"] += 1
+                    if usage:
+                        self._stats["total_tokens"] += usage.total_tokens or 0
+                        self._stats["prompt_tokens"] += usage.prompt_tokens or 0
+                        self._stats["completion_tokens"] += usage.completion_tokens or 0
+                        cost = getattr(usage, "cost", None)
+                        if cost is None and usage.model_extra:
+                            cost = usage.model_extra.get("cost", 0.0)
+                        self._stats["total_cost"] += cost or 0.0
+                    self._stats["total_time_ms"] += elapsed_ms
 
                 return content
 
