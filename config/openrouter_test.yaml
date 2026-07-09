@@ -22,3 +22,9 @@ leader:
 election:
   method: plurality
   elections_every_round: true
+llm:
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  model: openai/gpt-4o-mini
+  temperature: 0.7
+  max_tokens: 500

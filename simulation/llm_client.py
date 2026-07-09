@@ -69,17 +69,24 @@ class DeepSeekLLM(LLMInterface):
         max_tokens: int = 500,
         base_url: str = "https://api.deepseek.com",
         retries: int = 2,
+        num_rounds: int = 4,
+        turns_per_phase: int = 10,
+        fine_destination: str = "destroyed",
     ):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.retries = retries
+        self.num_rounds = num_rounds
+        self.turns_per_phase = turns_per_phase
+        self.fine_destination = fine_destination
 
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url,
         )
-        self._stats = {"calls": 0, "total_tokens": 0, "total_time_ms": 0}
+        self._stats = {"calls": 0, "total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_cost": 0.0, "total_time_ms": 0}
+        self._decide_system = self._build_decide_system()
 
     def _call(self, system: str, user: str) -> str:
         """Make an API call and return the response text."""
@@ -102,7 +109,13 @@ class DeepSeekLLM(LLMInterface):
 
                 self._stats["calls"] += 1
                 if usage:
-                    self._stats["total_tokens"] += usage.total_tokens
+                    self._stats["total_tokens"] += usage.total_tokens or 0
+                    self._stats["prompt_tokens"] += usage.prompt_tokens or 0
+                    self._stats["completion_tokens"] += usage.completion_tokens or 0
+                    cost = getattr(usage, "cost", None)
+                    if cost is None and usage.model_extra:
+                        cost = usage.model_extra.get("cost", 0.0)
+                    self._stats["total_cost"] += cost or 0.0
                 self._stats["total_time_ms"] += elapsed_ms
 
                 return content
@@ -116,30 +129,60 @@ class DeepSeekLLM(LLMInterface):
                         f"DeepSeek API call failed after {self.retries + 1} attempts: {e}"
                     )
 
-    _DECIDE_SYSTEM = (
-        "You are an agent in a fishing village simulation.\n"
-        "- The shared lake regenerates each round. Below 0.01 fish it COLLAPSES permanently.\n"
-        "- An elected leader sets harvest limit + penalty rate. Exceeding limit costs fish.\n"
-        "- Goal: accumulate personal fish.\n"
-        "\n"
-        "Actions:\n"
-        "- talk message=...  Speak to your CURRENT channel.\n"
-        "  [public]=everyone hears. [private]=only group members.\n"
-        "- create_group targets=[names...]  Private channel. Only one pending at a time.\n"
-        "  Creating a new one cancels old pending.\n"
-        "- accept_invite group=[name]  Join a channel. Cancels your pending group.\n"
-        "- reject_invite group=[name]  Decline.\n"
-        "- leave_group group=[name]  Return to public. Last member dissolves channel.\n"
-        "- transfer target=[name] amount=[N]  Send fish.\n"
-        "  [public]=everyone sees it. [private]=only channel members.\n"
-        "- pass  Nothing this turn.\n"
-        "\n"
-        "Reply JSON only: {\"action\",\"target\",\"targets\",\"group\",\"message\",\"amount\",\"reasoning\"}\n"
-        "Only include fields used."
-    )
+    def _build_decide_system(self) -> str:
+        """Build the system prompt with simulation parameters."""
+        return (
+            "You are an agent in a fishing village simulation.\n"
+            f"- This simulation runs for {self.num_rounds} rounds, "
+            f"each with {self.turns_per_phase} turns per phase.\n"
+            "- Goal: accumulate personal fish.\n"
+            "- The shared lake regenerates each round. "
+            "Below 0.01 fish it COLLAPSES permanently.\n"
+            "\n"
+            "=== ROUND STRUCTURE ===\n"
+            "Each round has 4 phases:\n"
+            "1. Free Interaction \u2014 Talk, form private channels, make deals, plan strategy.\n"
+            "2. Election \u2014 Candidates pay a cost to run, propose a harvest limit and\n"
+            "   penalty rate. All agents vote. Winner\u2019s policy is enforced during harvest.\n"
+            "3. Harvest \u2014 Each agent takes fish. Exceeding the leader\u2019s limit triggers a penalty.\n"
+            "4. Post-Harvest Interaction \u2014 Discuss results and plan for next round.\n"
+            "\n"
+            "=== ELECTION DETAILS ===\n"
+            "- Any agent can become a candidate by paying a candidacy cost.\n"
+            "- Each candidate proposes a harvest limit (1-20) and penalty rate (0-5x).\n"
+            "- All agents vote secretly. The candidate with the most votes wins.\n"
+            "- The winner\u2019s harvest limit and penalty rate are enforced during harvest.\n"
+            "- Penalty = (your harvest - limit) \u00d7 penalty_rate, deducted from your fish.\n"
+            f"- Penalty fish go to the {self._fine_destination_label()}.\n"
+            "\n"
+            "Actions:\n"
+            "- talk message=...  Speak to your CURRENT channel.\n"
+            "  [public]=everyone hears. [private]=only group members.\n"
+            "- create_group targets=[names...]  Private channel. Only one pending at a time.\n"
+            "  Creating a new one cancels old pending.\n"
+            "- accept_invite group=[name]  Join a channel. Cancels your pending group.\n"
+            "- reject_invite group=[name]  Decline.\n"
+            "- leave_group group=[name]  Return to public. Last member dissolves channel.\n"
+            "- transfer target=[name] amount=[N]  Send fish.\n"
+            "  [public]=everyone sees it. [private]=only channel members.\n"
+            "- pass  Nothing this turn.\n"
+            "\n"
+            "Reply JSON only: {\"action\",\"target\",\"targets\",\"group\",\"message\",\"amount\",\"reasoning\"}\n"
+            "Only include fields used."
+        )
+
+    def _fine_destination_label(self) -> str:
+        """Human-readable label for where penalty fish end up."""
+        labels = {
+            "leader_stash": "leader's stash (the leader profits)",
+            "common_pool": "shared lake pool (returned to the lake)",
+            "destroyed": "void (removed from the system)",
+            "redistribute": "non-violators (split equally among rule-followers)",
+        }
+        return labels.get(self.fine_destination, self.fine_destination)
 
     def decide(self, prompt: str) -> LLMResponse:
-        raw = self._call(self._DECIDE_SYSTEM, prompt)
+        raw = self._call(self._decide_system, prompt)
         try:
             data = _extract_json(raw)
         except ValueError:

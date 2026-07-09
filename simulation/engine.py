@@ -80,6 +80,8 @@ class Engine:
         # Metrics tracking
         self._harvested_this_round: dict[str, float] = {}
         self._violations_count: int = 0
+        self._total_harvested: float = 0.0
+        self._total_penalties_amount: float = 0.0
 
         # Collapse detection
         self.collapsed: bool = False
@@ -88,6 +90,7 @@ class Engine:
 
         # Phase context sentence
         self._phase_context: str = ""
+        self._current_turn_in_phase: int = 0
 
         # Initialize
         self.channels: ChannelManager | None = None  # initialized after agents in _init_state
@@ -329,6 +332,19 @@ class Engine:
         # Populate recorder with round summaries and agent memories
         self._set_recorder_metadata()
 
+        # Final summary
+        end_reason = f"collapse at round {self.collapsed_at_round}" if self.collapsed else "time limit"
+        print(f"[sim] === Simulation complete: {self.survival_length} round(s), ended: {end_reason} ===")
+        print(f"[sim] Total harvested: {self._total_harvested:.1f} fish, "
+              f"Total penalties: {self._total_penalties_amount:.1f} fish")
+        llm_stats = self.llm.stats()
+        if llm_stats.get("calls"):
+            tokens = llm_stats.get("total_tokens", 0)
+            time_s = llm_stats.get("total_time_ms", 0) / 1000
+            cost = llm_stats.get("total_cost", 0.0)
+            cost_str = f", ${cost:.4f}" if cost else ""
+            print(f"[sim] LLM: {llm_stats['calls']} calls, {tokens} tokens{cost_str}, {time_s:.1f}s")
+
     def _reset_round_state(self) -> None:
         """Reset per-round tracking."""
         self.turn_counter = 0
@@ -357,6 +373,7 @@ class Engine:
             print(f"[sim]     Turn order: {', '.join(agent_names)}")
 
         for t in range(turns):
+            self._current_turn_in_phase = t + 1
             if self.verbose:
                 print(f"[sim]     Turn {t+1}/{turns}...")
             for agent in order:
@@ -801,6 +818,9 @@ class Engine:
             personality=agent.personality,
             last_action=last_action,
             phase_context=self._phase_context,
+            turn_in_phase=self._current_turn_in_phase,
+            turns_per_phase=self.config["simulation"]["turns_per_phase"],
+            total_rounds=self.config["simulation"]["num_rounds"],
         )
 
     def _get_pending_sent_invites(self, agent_id: str) -> dict[str, dict]:
@@ -1173,6 +1193,7 @@ class Engine:
         self.current_phase = "harvesting"
         self.recorder.start_phase("harvesting")
 
+        self._current_turn_in_phase = 1
         order = self._shuffled_agents()
         if self.verbose:
             print(f"[sim]     Turn order: {[a.name for a in order]}")
@@ -1202,6 +1223,7 @@ class Engine:
                 limit_warn = f"(limit={self.leader_limit}, penalty={float(response.amount or harvest_amount) - self.leader_limit:.1f} over)" if (self.leader and self.leader_limit is not None and harvest_amount > self.leader_limit) else ""
                 print(f"[sim]       {agent.name}: take {actual_taken:.1f} fish (pool now {self.pool.amount:.1f}) {limit_warn}")
             self._harvested_this_round[agent.id] = actual_taken
+            self._total_harvested += actual_taken
 
             # Initialize penalty_info for personal log
             penalty_info = None
@@ -1248,6 +1270,7 @@ class Engine:
                     }
                     self._penalties_this_round[agent.id] = penalty_info
                     agent.violations += 1
+                    self._total_penalties_amount += penalty
                     # Personal log: penalty for the violator
                     agent.add_log_entry(
                         round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,

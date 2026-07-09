@@ -1,6 +1,6 @@
 simulation:
-  num_rounds: 2
-  turns_per_phase: 4
+  num_rounds: 3
+  turns_per_phase: 8
 agents:
   names: [Kate, Jack, Emma, Luke]
   starting_resources: 50.0
@@ -17,7 +17,7 @@ election:
   method: plurality
   first_election_round: 2
 leader:
-  fine_destination: common_pool
+  fine_destination: destroyed
   default_limit: 10.0
   default_penalty_rate: 0.0
 llm:

@@ -89,21 +89,29 @@ def main():
         print("[main] Using StubLLM (deterministic)")
         llm = StubLLM()
     else:
-        api_key = os.environ.get("DEEPSEEK_API_KEY")
+        api_key = (
+            os.environ.get("OPENROUTER_API_KEY")
+            or os.environ.get("DEEPSEEK_API_KEY")
+        )
         if not api_key:
             print(
-                "Error: DEEPSEEK_API_KEY not set. "
+                "Error: neither OPENROUTER_API_KEY nor DEEPSEEK_API_KEY set. "
                 "Use --stub to run with StubLLM.",
                 file=sys.stderr,
             )
             sys.exit(1)
 
-        print(f"[main] Using DeepSeekLLM (model={config['llm']['model']})")
+        base_url = config["llm"].get("base_url", "https://api.deepseek.com")
+        print(f"[main] Using LLM (model={config['llm']['model']}, base_url={base_url})")
         llm = DeepSeekLLM(
             api_key=api_key,
+            base_url=base_url,
             model=config["llm"]["model"],
             temperature=config["llm"]["temperature"],
             max_tokens=config["llm"]["max_tokens"],
+            num_rounds=config["simulation"]["num_rounds"],
+            turns_per_phase=config["simulation"]["turns_per_phase"],
+            fine_destination=config["leader"]["fine_destination"],
         )
 
     # Wrap in RecordingLLM if --record-prompts

@@ -56,6 +56,9 @@ def build_decision_prompt(
     personality: Optional[str] = None,
     last_action: str = "",
     phase_context: str = "",
+    turn_in_phase: int = 1,
+    turns_per_phase: int = 10,
+    total_rounds: int = 4,
 ) -> str:
     """Build the prompt for free interaction decisions.
 
@@ -65,7 +68,8 @@ def build_decision_prompt(
     limit_str = f"{leader_limit:.1f}" if leader_limit is not None else "none"
     penalty_str = f"{leader_penalty:.1f}x" if leader_penalty else "none"
 
-    lines = [f"You are {agent_name}. Round {round_num}, {phase}."]
+    lines = [f"You are {agent_name}. Round {round_num}/{total_rounds}, {phase}."]
+    lines.append(f"Turn {turn_in_phase}/{turns_per_phase} in this phase.")
 
     if personality:
         lines.append(f"\nPersonality: {personality}")

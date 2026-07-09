@@ -79,6 +79,13 @@ class LLMInterface(ABC):
         """
         ...
 
+    def stats(self) -> dict:
+        """Return usage statistics (calls, tokens, time).
+
+        Default empty dict for LLMs that don't track stats.
+        """
+        return {}
+
 
 class StubLLM(LLMInterface):
     """Returns pre-scripted responses for deterministic testing.
@@ -146,6 +153,10 @@ class StubLLM(LLMInterface):
         """
         return {}
 
+    def stats(self) -> dict:
+        """Stub stats — no usage tracked."""
+        return {}
+
     def reset(self) -> None:
         """Reset the call counter."""
         self.call_count = 0
@@ -190,3 +201,7 @@ class RecordingLLM(LLMInterface):
         response = self.inner.analyze(conversations)
         self.history.append({"prompt": conversations, "response": response})
         return response
+
+    def stats(self) -> dict:
+        """Delegate to inner LLM's stats."""
+        return self.inner.stats()

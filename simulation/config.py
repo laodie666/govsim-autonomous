@@ -26,7 +26,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "fish_per_harvest": 5.0,
     },
     "leader": {
-        "fine_destination": "common_pool",
+        "fine_destination": "leader_stash",
         "default_limit": 10.0,
         "default_penalty_rate": 0.0,
         "candidacy_cost": 5.0,
@@ -40,6 +40,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "model": "deepseek-chat",
         "temperature": 0.7,
         "max_tokens": 500,
+        "base_url": "https://api.deepseek.com",
     },
     "output": {
         "format": "json",
