@@ -132,9 +132,9 @@ class TestConfig:
         assert config["election"]["elections_every_round"] is True
 
     def test_candidacy_cost_default(self):
-        """candidacy_cost defaults to 5.0."""
+        """candidacy_cost defaults to 25.0."""
         config = load_config({})
-        assert config["leader"]["candidacy_cost"] == 5.0
+        assert config["leader"]["candidacy_cost"] == 25.0
 
     def test_config_override_elections_every_round(self):
         """Override elections_every_round to False."""

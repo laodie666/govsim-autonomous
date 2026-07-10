@@ -1,5 +1,5 @@
 {
-  "run_id": "sim_a9f1508390f2",
+  "run_id": "sim_a9267cf8b966",
   "config": {
     "simulation": {
       "num_rounds": 2,
@@ -11,26 +11,31 @@
         "Bob",
         "Charlie"
       ],
-      "starting_resources": 50.0
+      "starting_resources": 50.0,
+      "personalities": {}
     },
     "resources": {
       "carrying_capacity": 100.0,
-      "regeneration_factor": 1.5
+      "regeneration_factor": 1.5,
+      "fish_per_harvest": 5.0
     },
     "leader": {
       "fine_destination": "common_pool",
       "default_limit": 10.0,
-      "default_penalty_rate": 0.0
+      "default_penalty_rate": 0.0,
+      "candidacy_cost": 5.0
     },
     "election": {
       "method": "plurality",
+      "elections_every_round": true,
       "first_election_round": 2
     },
     "llm": {
       "provider": "deepseek",
       "model": "deepseek-chat",
       "temperature": 0.7,
-      "max_tokens": 500
+      "max_tokens": 500,
+      "base_url": "https://api.deepseek.com"
     },
     "output": {
       "format": "json",
@@ -38,7 +43,10 @@
       "include_agent_memories": true
     }
   },
-  "started_at": "2026-07-05T15:42:06Z",
+  "started_at": "2026-07-09T18:58:27Z",
+  "end_condition": "time_limit",
+  "collapsed_at_round": null,
+  "survival_length": 2,
   "rounds": [
     {
       "round": 1,
@@ -57,6 +65,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 50.0,
                 "pool": 100.0
@@ -79,6 +89,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 50.0,
                 "pool": 100.0
@@ -101,6 +113,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 50.0,
                 "pool": 100.0
@@ -123,6 +137,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 50.0,
                 "pool": 100.0
@@ -145,6 +161,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 50.0,
                 "pool": 100.0
@@ -167,6 +185,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 50.0,
                 "pool": 100.0
@@ -178,7 +198,14 @@
               "leader_limit": null,
               "penalty": null
             }
-          ]
+          ],
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
+          }
         },
         {
           "phase": "harvesting",
@@ -193,7 +220,9 @@
               "message": null,
               "amount": 8.0,
               "reasoning": ".",
-              "significance": "economic",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 50.0,
                 "pool": 100.0
@@ -215,7 +244,9 @@
               "message": null,
               "amount": 3.0,
               "reasoning": ".",
-              "significance": "economic",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 50.0,
                 "pool": 92.0
@@ -237,7 +268,9 @@
               "message": null,
               "amount": 7.0,
               "reasoning": ".",
-              "significance": "economic",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 50.0,
                 "pool": 89.0
@@ -249,7 +282,14 @@
               "leader_limit": null,
               "penalty": null
             }
-          ]
+          ],
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
+          }
         },
         {
           "phase": "free_interaction",
@@ -265,6 +305,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 53.0,
                 "pool": 82.0
@@ -287,6 +329,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 58.0,
                 "pool": 82.0
@@ -309,6 +353,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 57.0,
                 "pool": 82.0
@@ -331,6 +377,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 53.0,
                 "pool": 82.0
@@ -353,6 +401,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 58.0,
                 "pool": 82.0
@@ -375,6 +425,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 57.0,
                 "pool": 82.0
@@ -386,7 +438,14 @@
               "leader_limit": null,
               "penalty": null
             }
-          ]
+          ],
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
+          }
         }
       ]
     },
@@ -407,6 +466,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 53.0,
                 "pool": 100.0
@@ -429,6 +490,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 58.0,
                 "pool": 100.0
@@ -451,6 +514,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 57.0,
                 "pool": 100.0
@@ -473,6 +538,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "bob": 53.0,
                 "pool": 100.0
@@ -495,6 +562,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "charlie": 58.0,
                 "pool": 100.0
@@ -517,6 +586,8 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
                 "alice": 57.0,
                 "pool": 100.0
@@ -528,7 +599,14 @@
               "leader_limit": null,
               "penalty": null
             }
-          ]
+          ],
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
+          }
         },
         {
           "phase": "election",
@@ -544,11 +622,13 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "alice": 57.0
+                "alice": 52.0
               },
               "resources_after": {
-                "alice": 57.0
+                "alice": 52.0
               },
               "leader_limit": null,
               "penalty": null
@@ -564,11 +644,13 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "bob": 53.0
+                "bob": 48.0
               },
               "resources_after": {
-                "bob": 53.0
+                "bob": 48.0
               },
               "leader_limit": null,
               "penalty": null
@@ -584,49 +666,19 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "charlie": 58.0
+                "charlie": 53.0
               },
               "resources_after": {
-                "charlie": 58.0
+                "charlie": 53.0
               },
               "leader_limit": null,
               "penalty": null
             },
             {
               "turn": 4,
-              "agent": "alice",
-              "action": "vote",
-              "target": "alice",
-              "targets": null,
-              "is_private": false,
-              "message": null,
-              "amount": null,
-              "reasoning": "",
-              "significance": null,
-              "resources_before": {},
-              "resources_after": {},
-              "leader_limit": null,
-              "penalty": null
-            },
-            {
-              "turn": 5,
-              "agent": "bob",
-              "action": "vote",
-              "target": "alice",
-              "targets": null,
-              "is_private": false,
-              "message": null,
-              "amount": null,
-              "reasoning": "",
-              "significance": null,
-              "resources_before": {},
-              "resources_after": {},
-              "leader_limit": null,
-              "penalty": null
-            },
-            {
-              "turn": 6,
               "agent": "charlie",
               "action": "vote",
               "target": "bob",
@@ -636,6 +688,44 @@
               "amount": null,
               "reasoning": "",
               "significance": null,
+              "group": null,
+              "heard_by": null,
+              "resources_before": {},
+              "resources_after": {},
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 5,
+              "agent": "alice",
+              "action": "vote",
+              "target": "alice",
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": "",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
+              "resources_before": {},
+              "resources_after": {},
+              "leader_limit": null,
+              "penalty": null
+            },
+            {
+              "turn": 6,
+              "agent": "bob",
+              "action": "vote",
+              "target": "alice",
+              "targets": null,
+              "is_private": false,
+              "message": null,
+              "amount": null,
+              "reasoning": "",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {},
               "resources_after": {},
               "leader_limit": null,
@@ -649,11 +739,18 @@
               "bob": 1
             },
             "voter_map": {
+              "charlie": "bob",
               "alice": "alice",
-              "bob": "alice",
-              "charlie": "bob"
+              "bob": "alice"
             },
             "acceptance_message": "."
+          },
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
           }
         },
         {
@@ -669,13 +766,15 @@
               "message": null,
               "amount": 7.0,
               "reasoning": ".",
-              "significance": "economic",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "alice": 57.0,
+                "alice": 52.0,
                 "pool": 100.0
               },
               "resources_after": {
-                "alice": 60.0,
+                "alice": 55.0,
                 "pool": 97.0
               },
               "leader_limit": 5.0,
@@ -695,13 +794,15 @@
               "message": null,
               "amount": 4.0,
               "reasoning": ".",
-              "significance": "economic",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "bob": 53.0,
+                "bob": 48.0,
                 "pool": 97.0
               },
               "resources_after": {
-                "bob": 57.0,
+                "bob": 52.0,
                 "pool": 93.0
               },
               "leader_limit": 5.0,
@@ -717,19 +818,28 @@
               "message": null,
               "amount": 5.0,
               "reasoning": ".",
-              "significance": "economic",
+              "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "charlie": 58.0,
+                "charlie": 53.0,
                 "pool": 93.0
               },
               "resources_after": {
-                "charlie": 63.0,
+                "charlie": 58.0,
                 "pool": 88.0
               },
               "leader_limit": 5.0,
               "penalty": null
             }
-          ]
+          ],
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
+          }
         },
         {
           "phase": "free_interaction",
@@ -745,12 +855,14 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "bob": 57.0,
+                "bob": 52.0,
                 "pool": 88.0
               },
               "resources_after": {
-                "bob": 57.0,
+                "bob": 52.0,
                 "pool": 88.0
               },
               "leader_limit": null,
@@ -767,12 +879,14 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "charlie": 63.0,
+                "charlie": 58.0,
                 "pool": 88.0
               },
               "resources_after": {
-                "charlie": 63.0,
+                "charlie": 58.0,
                 "pool": 88.0
               },
               "leader_limit": null,
@@ -789,12 +903,14 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "alice": 60.0,
+                "alice": 55.0,
                 "pool": 88.0
               },
               "resources_after": {
-                "alice": 60.0,
+                "alice": 55.0,
                 "pool": 88.0
               },
               "leader_limit": null,
@@ -811,12 +927,14 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "bob": 57.0,
+                "bob": 52.0,
                 "pool": 88.0
               },
               "resources_after": {
-                "bob": 57.0,
+                "bob": 52.0,
                 "pool": 88.0
               },
               "leader_limit": null,
@@ -833,12 +951,14 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "charlie": 63.0,
+                "charlie": 58.0,
                 "pool": 88.0
               },
               "resources_after": {
-                "charlie": 63.0,
+                "charlie": 58.0,
                 "pool": 88.0
               },
               "leader_limit": null,
@@ -855,18 +975,27 @@
               "amount": null,
               "reasoning": ".",
               "significance": null,
+              "group": null,
+              "heard_by": null,
               "resources_before": {
-                "alice": 60.0,
+                "alice": 55.0,
                 "pool": 88.0
               },
               "resources_after": {
-                "alice": 60.0,
+                "alice": 55.0,
                 "pool": 88.0
               },
               "leader_limit": null,
               "penalty": null
             }
-          ]
+          ],
+          "channel_states": {
+            "public": [
+              "Alice",
+              "Bob",
+              "Charlie"
+            ]
+          }
         }
       ]
     }
@@ -879,15 +1008,684 @@
         "pool_remaining": 82.0,
         "gini_coefficient": 0.019841269841269993,
         "violations": 0,
-        "penalties_imposed": 0
+        "penalties_imposed": 0,
+        "centrality": {
+          "alice": 0.0,
+          "bob": 0.0,
+          "charlie": 0.0
+        }
       },
       {
         "round": 2,
         "total_harvest": 16.0,
         "pool_remaining": 88.0,
-        "gini_coefficient": 0.022222222222222365,
+        "gini_coefficient": 0.0242424242424244,
         "violations": 1,
-        "penalties_imposed": 1
+        "penalties_imposed": 1,
+        "centrality": {
+          "alice": 0.0,
+          "bob": 0.0,
+          "charlie": 0.0
+        }
+      }
+    ]
+  },
+  "round_summaries": [
+    {
+      "round": 1,
+      "leader": null,
+      "leader_platform": null,
+      "election": null,
+      "total_harvested": 18.0,
+      "pool_start": 100.0,
+      "pool_end": 100.0,
+      "agent_results": {
+        "alice": {
+          "harvested": 7.0,
+          "violated": false,
+          "penalty": 0,
+          "penalty_destination": null
+        },
+        "bob": {
+          "harvested": 3.0,
+          "violated": false,
+          "penalty": 0,
+          "penalty_destination": null
+        },
+        "charlie": {
+          "harvested": 8.0,
+          "violated": false,
+          "penalty": 0,
+          "penalty_destination": null
+        }
+      },
+      "llm_summary": "Agents discussed resource management."
+    },
+    {
+      "round": 2,
+      "leader": "Alice",
+      "leader_platform": {
+        "harvest_limit": 5.0,
+        "penalty_rate": 2.0
+      },
+      "election": {
+        "winner": "alice",
+        "votes": {
+          "alice": 2,
+          "bob": 1
+        },
+        "voter_map": {
+          "charlie": "bob",
+          "alice": "alice",
+          "bob": "alice"
+        }
+      },
+      "total_harvested": 16.0,
+      "pool_start": 100.0,
+      "pool_end": 100.0,
+      "agent_results": {
+        "alice": {
+          "harvested": 7.0,
+          "violated": true,
+          "penalty": 4.0,
+          "penalty_destination": "common_pool"
+        },
+        "bob": {
+          "harvested": 4.0,
+          "violated": false,
+          "penalty": 0,
+          "penalty_destination": null
+        },
+        "charlie": {
+          "harvested": 5.0,
+          "violated": false,
+          "penalty": 0,
+          "penalty_destination": null
+        }
+      },
+      "llm_summary": "Agents discussed resource management."
+    }
+  ],
+  "agent_memories": {
+    "alice": [
+      {
+        "turn": 15,
+        "type": "round_summary",
+        "content": "Agents discussed resource management.",
+        "significance": "round_summary"
+      },
+      {
+        "turn": 21,
+        "type": "round_summary",
+        "content": "Agents discussed resource management.",
+        "significance": "round_summary"
+      }
+    ],
+    "bob": [
+      {
+        "turn": 15,
+        "type": "round_summary",
+        "content": "Agents discussed resource management.",
+        "significance": "round_summary"
+      },
+      {
+        "turn": 21,
+        "type": "round_summary",
+        "content": "Agents discussed resource management.",
+        "significance": "round_summary"
+      }
+    ],
+    "charlie": [
+      {
+        "turn": 15,
+        "type": "round_summary",
+        "content": "Agents discussed resource management.",
+        "significance": "round_summary"
+      },
+      {
+        "turn": 21,
+        "type": "round_summary",
+        "content": "Agents discussed resource management.",
+        "significance": "round_summary"
+      }
+    ]
+  },
+  "personal_logs": {
+    "alice": [
+      {
+        "round": 1,
+        "turn": 0,
+        "phase": null,
+        "type": "round_marker",
+        "data": {
+          "round": 1
+        }
+      },
+      {
+        "round": 1,
+        "turn": 0,
+        "phase": null,
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 1,
+        "turn": 6,
+        "phase": "free_interaction",
+        "type": "phase_marker",
+        "data": {
+          "phase": "harvesting"
+        }
+      },
+      {
+        "round": 1,
+        "turn": 7,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 100.0,
+          "pool_after": 92.0,
+          "amount": 8.0
+        }
+      },
+      {
+        "round": 1,
+        "turn": 8,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 92.0,
+          "pool_after": 89.0,
+          "amount": 3.0
+        }
+      },
+      {
+        "round": 1,
+        "turn": 9,
+        "phase": "harvesting",
+        "type": "harvest",
+        "data": {
+          "amount": 7.0,
+          "pool_before": 89.0,
+          "pool_after": 82.0,
+          "limit": null,
+          "violation": false
+        }
+      },
+      {
+        "round": 1,
+        "turn": 9,
+        "phase": "harvesting",
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 0,
+        "phase": null,
+        "type": "round_marker",
+        "data": {
+          "round": 2
+        }
+      },
+      {
+        "round": 2,
+        "turn": 0,
+        "phase": null,
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 6,
+        "phase": "free_interaction",
+        "type": "phase_marker",
+        "data": {
+          "phase": "election"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 10,
+        "phase": "election",
+        "type": "vote",
+        "data": {
+          "voted_for": "alice"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 12,
+        "phase": "election",
+        "type": "election_result",
+        "data": {
+          "winner": "Alice",
+          "limit": 5.0,
+          "penalty_rate": 2.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 12,
+        "phase": "election",
+        "type": "phase_marker",
+        "data": {
+          "phase": "harvesting"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 13,
+        "phase": "harvesting",
+        "type": "harvest",
+        "data": {
+          "amount": 7.0,
+          "pool_before": 100.0,
+          "pool_after": 93.0,
+          "limit": 5.0,
+          "violation": false
+        }
+      },
+      {
+        "round": 2,
+        "turn": 13,
+        "phase": "harvesting",
+        "type": "penalty",
+        "data": {
+          "text": "You were penalized 4.0 fish for exceeding the 5.0 limit"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 13,
+        "phase": "harvesting",
+        "type": "system",
+        "data": {
+          "text": "You penalized Alice 4.0 fish for exceeding the limit"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 14,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 97.0,
+          "pool_after": 93.0,
+          "amount": 4.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 15,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 93.0,
+          "pool_after": 88.0,
+          "amount": 5.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 15,
+        "phase": "harvesting",
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      }
+    ],
+    "bob": [
+      {
+        "round": 1,
+        "turn": 0,
+        "phase": null,
+        "type": "round_marker",
+        "data": {
+          "round": 1
+        }
+      },
+      {
+        "round": 1,
+        "turn": 0,
+        "phase": null,
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 1,
+        "turn": 6,
+        "phase": "free_interaction",
+        "type": "phase_marker",
+        "data": {
+          "phase": "harvesting"
+        }
+      },
+      {
+        "round": 1,
+        "turn": 7,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 100.0,
+          "pool_after": 92.0,
+          "amount": 8.0
+        }
+      },
+      {
+        "round": 1,
+        "turn": 8,
+        "phase": "harvesting",
+        "type": "harvest",
+        "data": {
+          "amount": 3.0,
+          "pool_before": 92.0,
+          "pool_after": 89.0,
+          "limit": null,
+          "violation": false
+        }
+      },
+      {
+        "round": 1,
+        "turn": 9,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 89.0,
+          "pool_after": 82.0,
+          "amount": 7.0
+        }
+      },
+      {
+        "round": 1,
+        "turn": 9,
+        "phase": "harvesting",
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 0,
+        "phase": null,
+        "type": "round_marker",
+        "data": {
+          "round": 2
+        }
+      },
+      {
+        "round": 2,
+        "turn": 0,
+        "phase": null,
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 6,
+        "phase": "free_interaction",
+        "type": "phase_marker",
+        "data": {
+          "phase": "election"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 11,
+        "phase": "election",
+        "type": "vote",
+        "data": {
+          "voted_for": "alice"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 12,
+        "phase": "election",
+        "type": "election_result",
+        "data": {
+          "winner": "Alice",
+          "limit": 5.0,
+          "penalty_rate": 2.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 12,
+        "phase": "election",
+        "type": "phase_marker",
+        "data": {
+          "phase": "harvesting"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 13,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 100.0,
+          "pool_after": 93.0,
+          "amount": 7.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 14,
+        "phase": "harvesting",
+        "type": "harvest",
+        "data": {
+          "amount": 4.0,
+          "pool_before": 97.0,
+          "pool_after": 93.0,
+          "limit": 5.0,
+          "violation": false
+        }
+      },
+      {
+        "round": 2,
+        "turn": 15,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 93.0,
+          "pool_after": 88.0,
+          "amount": 5.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 15,
+        "phase": "harvesting",
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      }
+    ],
+    "charlie": [
+      {
+        "round": 1,
+        "turn": 0,
+        "phase": null,
+        "type": "round_marker",
+        "data": {
+          "round": 1
+        }
+      },
+      {
+        "round": 1,
+        "turn": 0,
+        "phase": null,
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 1,
+        "turn": 6,
+        "phase": "free_interaction",
+        "type": "phase_marker",
+        "data": {
+          "phase": "harvesting"
+        }
+      },
+      {
+        "round": 1,
+        "turn": 7,
+        "phase": "harvesting",
+        "type": "harvest",
+        "data": {
+          "amount": 8.0,
+          "pool_before": 100.0,
+          "pool_after": 92.0,
+          "limit": null,
+          "violation": false
+        }
+      },
+      {
+        "round": 1,
+        "turn": 8,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 92.0,
+          "pool_after": 89.0,
+          "amount": 3.0
+        }
+      },
+      {
+        "round": 1,
+        "turn": 9,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 89.0,
+          "pool_after": 82.0,
+          "amount": 7.0
+        }
+      },
+      {
+        "round": 1,
+        "turn": 9,
+        "phase": "harvesting",
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 0,
+        "phase": null,
+        "type": "round_marker",
+        "data": {
+          "round": 2
+        }
+      },
+      {
+        "round": 2,
+        "turn": 0,
+        "phase": null,
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 6,
+        "phase": "free_interaction",
+        "type": "phase_marker",
+        "data": {
+          "phase": "election"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 9,
+        "phase": "election",
+        "type": "vote",
+        "data": {
+          "voted_for": "bob"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 12,
+        "phase": "election",
+        "type": "election_result",
+        "data": {
+          "winner": "Alice",
+          "limit": 5.0,
+          "penalty_rate": 2.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 12,
+        "phase": "election",
+        "type": "phase_marker",
+        "data": {
+          "phase": "harvesting"
+        }
+      },
+      {
+        "round": 2,
+        "turn": 13,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 100.0,
+          "pool_after": 93.0,
+          "amount": 7.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 14,
+        "phase": "harvesting",
+        "type": "pool_state",
+        "data": {
+          "pool_before": 97.0,
+          "pool_after": 93.0,
+          "amount": 4.0
+        }
+      },
+      {
+        "round": 2,
+        "turn": 15,
+        "phase": "harvesting",
+        "type": "harvest",
+        "data": {
+          "amount": 5.0,
+          "pool_before": 93.0,
+          "pool_after": 88.0,
+          "limit": 5.0,
+          "violation": false
+        }
+      },
+      {
+        "round": 2,
+        "turn": 15,
+        "phase": "harvesting",
+        "type": "phase_marker",
+        "data": {
+          "phase": "discussion"
+        }
       }
     ]
   }

@@ -18,7 +18,7 @@ leader:
   fine_destination: leader_stash
   default_limit: 6.0
   default_penalty_rate: 1.0
-  candidacy_cost: 5.0
+  candidacy_cost: 30.0
 election:
   method: plurality
   elections_every_round: true

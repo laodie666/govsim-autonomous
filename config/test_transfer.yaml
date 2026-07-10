@@ -1,6 +1,6 @@
 simulation:
-  num_rounds: 3
-  turns_per_phase: 8
+  num_rounds: 1
+  turns_per_phase: 4
 agents:
   names: [Sage, River, Ash, Quinn, Kai]
   starting_resources: 30.0
@@ -13,12 +13,17 @@ agents:
 resources:
   carrying_capacity: 200.0
   regeneration_factor: 2.0
-  fish_per_harvest: 5.0
 leader:
   fine_destination: leader_stash
   default_limit: 6.0
   default_penalty_rate: 1.0
-  candidacy_cost: 30.0
+  candidacy_cost: 25.0
 election:
   method: plurality
   elections_every_round: true
+llm:
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  model: deepseek/deepseek-v4-flash
+  temperature: 0.7
+  max_tokens: 500

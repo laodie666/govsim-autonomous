@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import random
+import time
 from typing import Any, Optional
 
 from simulation.agent import Agent
@@ -80,6 +81,7 @@ class Engine:
 
         # Metrics tracking
         self._harvested_this_round: dict[str, float] = {}
+        self._round_history: list[dict] = []  # per-round structured history
         self._violations_count: int = 0
         self._total_harvested: float = 0.0
         self._total_penalties_amount: float = 0.0
@@ -228,6 +230,7 @@ class Engine:
 
     def run(self) -> None:
         """Run the full simulation from start to finish."""
+        sim_start = time.time()
         num_rounds = self.config["simulation"]["num_rounds"]
 
         for round_num in range(1, num_rounds + 1):
@@ -334,8 +337,9 @@ class Engine:
         self._set_recorder_metadata()
 
         # Final summary
+        wall_clock = time.time() - sim_start
         end_reason = f"collapse at round {self.collapsed_at_round}" if self.collapsed else "time limit"
-        print(f"[sim] === Simulation complete: {self.survival_length} round(s), ended: {end_reason} ===")
+        print(f"[sim] === Simulation complete: {self.survival_length} round(s), ended: {end_reason} ({wall_clock:.1f}s wall) ===")
         print(f"[sim] Total harvested: {self._total_harvested:.1f} fish, "
               f"Total penalties: {self._total_penalties_amount:.1f} fish")
         llm_stats = self.llm.stats()
@@ -344,7 +348,7 @@ class Engine:
             time_s = llm_stats.get("total_time_ms", 0) / 1000
             cost = llm_stats.get("total_cost", 0.0)
             cost_str = f", ${cost:.4f}" if cost else ""
-            print(f"[sim] LLM: {llm_stats['calls']} calls, {tokens} tokens{cost_str}, {time_s:.1f}s")
+            print(f"[sim] LLM: {llm_stats['calls']} calls, {tokens} tokens{cost_str}, {time_s:.1f}s cumulative")
 
     def _reset_round_state(self) -> None:
         """Reset per-round tracking."""
@@ -390,7 +394,7 @@ class Engine:
                     agent, ctx, resp, norm = future.result()
                     decisions[agent.id] = (ctx, resp, norm)
 
-            # Phase 2: Execute sequentially in order
+            # Phase 2: Execute sequentially, preserving deterministic order
             for agent in order:
                 self.turn_counter += 1
                 ctx, resp, norm = decisions[agent.id]
@@ -836,7 +840,7 @@ class Engine:
             leader_penalty=self.leader_penalty_rate,
             pool_status=self._pool_status(),
             harvest_this_round=harvest_this_round,
-            memory_context=pending_invites_str + self._build_memory_context(agent),
+            memory_context=self._build_round_history() + pending_invites_str + self._build_memory_context(agent),
             personality=agent.personality,
             last_action=last_action,
             phase_context=self._phase_context,
@@ -859,6 +863,25 @@ class Engine:
                     pending[invite.channel_name] = {"targets": [], "message": invite.message}
                 pending[invite.channel_name]["targets"].append(invite.to_agent)
         return pending
+
+    def _build_round_history(self) -> str:
+        """Build a structured round history section for the prompt."""
+        if not self._round_history:
+            return ""
+        lines = ["=== ROUND HISTORY ==="]
+        for rh in self._round_history:
+            r = rh["round"]
+            harvest_str = ", ".join(f"{name}: {amt:.1f}" for name, amt in rh["harvest"].items())
+            lines.append(f"Round {r}:")
+            if rh["winner"] and rh["winner"] != "None":
+                lines.append(f"  Leader: {rh['winner']} (limit={rh['leader_limit']:.1f}, penalty={rh['leader_penalty']:.1f}x)")
+                lines.append(f"  Votes: {rh['winner']} got {rh['winner_votes']} vote(s)")
+            else:
+                lines.append(f"  Leader: none (default limit=6.0, penalty=1.0x)")
+            lines.append(f"  Catches: {harvest_str}")
+            lines.append(f"  Total harvest: {rh['total_harvest']:.1f}")
+            lines.append("")
+        return "\n".join(lines)
 
     def _format_log_entry(self, entry: dict, agent: Agent) -> str:
         """Format a personal_log entry into a single readable line."""
@@ -1056,20 +1079,19 @@ class Engine:
 
         return "\n\n".join(parts) if parts else ""
     def _run_election(self) -> None:
-        """Run the election phase."""
+        """Run the election phase -- campaign + vote in parallel."""
         self.current_phase = "election"
         self.recorder.start_phase("election")
 
-        # Determine candidates -- agents who choose to pay the candidacy cost
+        # Determine candidates
         candidacy_cost = self.config["leader"].get("candidacy_cost", 5.0)
         candidates = []
         for agent in self.agent_list:
             if agent.resources >= candidacy_cost:
                 agent.deduct_resources(candidacy_cost)
                 candidates.append(agent)
-            else:
-                if self.verbose:
-                    print(f"[sim]       {agent.name}: cannot afford candidacy cost ({candidacy_cost:.0f} fish)")
+            elif self.verbose:
+                print(f"[sim]       {agent.name}: cannot afford candidacy cost ({candidacy_cost:.0f} fish)")
 
         # Handle no-candidate fallback
         if not candidates:
@@ -1078,70 +1100,71 @@ class Engine:
             self.leader = None
             self.leader_limit = self.config["leader"]["default_limit"]
             self.leader_penalty_rate = self.config["leader"]["default_penalty_rate"]
-            # Log for all agents
             for agent in self.agent_list:
-                agent.add_log_entry(
-                    round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
                     type="election_result",
-                    data={"winner": "None (default policy)", "limit": self.leader_limit, "penalty_rate": self.leader_penalty_rate},
-                )
+                    data={"winner": "None (default policy)", "limit": self.leader_limit, "penalty_rate": self.leader_penalty_rate})
             self._election_data = {"winner": None, "votes": {}, "voter_map": {}}
             return
 
-        candidate_platforms = {}
-
-        # Each candidate campaigns
         if self.verbose:
             print(f"[sim]     Candidates: {[c.name for c in candidates]}")
-        for candidate in candidates:
-            context = self._build_election_context(candidate, candidates)
-            platform = self.llm.campaign(context)
-            candidate_platforms[candidate.id] = platform
 
-            self.recorder.record_event(
-                turn=self.turn_counter + 1,
-                agent=candidate.id,
-                action="nominate",
-                message=platform.message,
-                reasoning=platform.reasoning,
+        # === PHASE 1: Campaign in parallel ===
+        candidate_platforms = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(candidates)) as ex:
+            def _campaign(c):
+                ctx = self._build_election_context(c, candidates)
+                return c.id, self.llm.campaign(ctx)
+            futures = {ex.submit(_campaign, c): c for c in candidates}
+            for f in concurrent.futures.as_completed(futures):
+                cid, platform = f.result()
+                candidate_platforms[cid] = platform
+
+        # Record campaign results sequentially
+        for candidate in candidates:
+            platform = candidate_platforms[candidate.id]
+            self.recorder.record_event(turn=self.turn_counter + 1, agent=candidate.id,
+                action="nominate", message=platform.message, reasoning=platform.reasoning,
                 resources_before={candidate.id: candidate.resources},
-                resources_after={candidate.id: candidate.resources},
-            )
+                resources_after={candidate.id: candidate.resources})
             self.turn_counter += 1
 
-        # Each agent votes
-        votes = []
-        voter_map = {}
+        # === PHASE 2: Vote in parallel ===
         candidate_ids = [c.id for c in candidates]
+        vote_results = []
 
-        for voter in self.agent_list:
-            context = self._build_vote_context(voter, candidates, candidate_platforms)
-            choice = self.llm.vote(context)
-
-            # Validate the vote
+        def _vote(voter):
+            ctx = self._build_vote_context(voter, candidates, candidate_platforms)
+            choice = self.llm.vote(ctx)
             if choice not in candidate_ids:
                 choice = self.rng.choice(candidate_ids)
+            return voter.id, choice
 
-            votes.append(choice)
-            voter_map[voter.id] = choice
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.agent_list)) as ex:
+            futures = {ex.submit(_vote, v): v for v in self.agent_list}
+            for f in concurrent.futures.as_completed(futures):
+                vid, choice = f.result()
+                vote_results.append((vid, choice))
 
-            self.recorder.record_vote(voter.id, choice)
-            # Personal log: vote entry for the voter
-            voter.add_log_entry(
-                round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
-                type="vote",
-                data={"voted_for": choice},
-            )
+        # Record votes sequentially
+        voter_map = {}
+        for vid, choice in vote_results:
+            voter_map[vid] = choice
+            self.recorder.record_vote(vid, choice)
+            voter = self.agents[vid]
+            voter.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                type="vote", data={"voted_for": choice})
             self.turn_counter += 1
 
-        # Tally votes and declare winner
-        result = tally_election(votes, seed=self.rng.randint(0, 2**31))
+        # === PHASE 3: Tally and declare winner ===
+        vote_list = [voter_map[agent.id] for agent in self.agent_list]
+        result = tally_election(vote_list, seed=self.rng.randint(0, 2**31))
 
         winner_id = result.winner
         winner_agent = self.agents[winner_id]
         winner_platform = candidate_platforms.get(winner_id)
 
-        # Set leader state
         if self.leader:
             self.leader.is_leader = False
         self.leader = winner_agent
@@ -1151,30 +1174,17 @@ class Engine:
             self.leader_limit = winner_platform.harvest_limit
             self.leader_penalty_rate = winner_platform.penalty_rate
 
-        # Record election result
-        self.recorder.record_election_result(
-            winner=winner_id,
-            votes=result.vote_counts,
+        self.recorder.record_election_result(winner=winner_id, votes=result.vote_counts,
             voter_map=voter_map,
-            acceptance_message=winner_platform.message if winner_platform else None,
-        )
+            acceptance_message=winner_platform.message if winner_platform else None)
+        self._election_data = {"winner": winner_id, "votes": result.vote_counts, "voter_map": voter_map}
 
-        # Save for round summary
-        self._election_data = {
-            "winner": winner_id,
-            "votes": result.vote_counts,
-            "voter_map": voter_map,
-        }
-
-        # Personal log: election_result for all agents
         limit_str = self.leader_limit or "?"
         penalty_str = self.leader_penalty_rate or "?"
         for agent in self.agent_list:
-            agent.add_log_entry(
-                round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+            agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
                 type="election_result",
-                data={"winner": winner_agent.name, "limit": limit_str, "penalty_rate": penalty_str},
-            )
+                data={"winner": winner_agent.name, "limit": limit_str, "penalty_rate": penalty_str})
 
     def _build_election_context(self, candidate: Agent, candidates: list[Agent]) -> str:
         """Build campaign prompt using prompts.py."""
@@ -1211,7 +1221,10 @@ class Engine:
         )
 
     def _run_harvesting(self) -> None:
-        """Run the harvesting phase -- agents fish."""
+        """Run the harvesting phase -- agents fish.
+
+        Decide in parallel (same pre-harvest pool), execute sequentially.
+        """
         self.current_phase = "harvesting"
         self.recorder.start_phase("harvesting")
 
@@ -1220,19 +1233,28 @@ class Engine:
         if self.verbose:
             print(f"[sim]     Turn order: {[a.name for a in order]}")
 
+        # Phase 1: All agents decide in parallel (same pool state)
+        decisions = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(order)) as ex:
+            def _harvest_decide(a):
+                ctx = self._build_harvest_context(a)
+                resp = self.llm.decide(ctx)
+                return a.id, ctx, resp
+            futures = {ex.submit(_harvest_decide, a): a for a in order}
+            for f in concurrent.futures.as_completed(futures):
+                aid, ctx, resp = f.result()
+                decisions[aid] = (ctx, resp)
+
+        # Phase 2: Execute sequentially (pool depletes)
         for agent in order:
             self.turn_counter += 1
+            ctx, response = decisions[agent.id]
 
             resources_before = {
                 agent.id: agent.resources,
                 "pool": self.pool.amount if self.pool else 0,
             }
 
-            # Build harvest context
-            context = self._build_harvest_context(agent)
-            response = self.llm.decide(context)
-
-            # Skip harvest if action is pass or amount is missing/zero
             harvest_amount = 0.0
             if response.action == "pass" or response.amount is None or float(response.amount) <= 0:
                 actual_taken = 0.0
@@ -1247,10 +1269,7 @@ class Engine:
             self._harvested_this_round[agent.id] = actual_taken
             self._total_harvested += actual_taken
 
-            # Initialize penalty_info for personal log
             penalty_info = None
-
-            # Personal log: harvest for the fisher
             pool_before = resources_before.get("pool", 0)
             pool_after = self.pool.amount if self.pool else 0
             agent.add_log_entry(
@@ -1259,7 +1278,6 @@ class Engine:
                 data={"amount": actual_taken, "pool_before": pool_before, "pool_after": pool_after,
                       "limit": self.leader_limit, "violation": penalty_info is not None},
             )
-            # Personal log: pool_state for ALL other agents (they see pool shrink)
             for other in self.agent_list:
                 if other.id != agent.id and actual_taken > 0:
                     other.add_log_entry(
@@ -1268,60 +1286,36 @@ class Engine:
                         data={"pool_before": pool_before, "pool_after": pool_after, "amount": actual_taken},
                     )
 
-            # Check for limit violation and apply penalty
             if self.leader and self.leader_limit is not None:
                 penalty = calculate_penalty(
-                    harvest_amount=actual_taken,
-                    limit=self.leader_limit,
+                    harvest_amount=actual_taken, limit=self.leader_limit,
                     penalty_rate=self.leader_penalty_rate or 0,
                 )
                 if penalty > 0:
                     self._violations_count += 1
                     distribute_fine(
-                        penalty_amount=penalty,
-                        violator=agent,
-                        leader=self.leader,
-                        pool=self.pool,
-                        destination=self.config["leader"]["fine_destination"],
+                        penalty_amount=penalty, violator=agent, leader=self.leader,
+                        pool=self.pool, destination=self.config["leader"]["fine_destination"],
                         non_violators=[a for a in self.agent_list if a.id != agent.id],
                     )
-                    penalty_info = {
-                        "imposed_by": self.leader.id,
-                        "amount": penalty,
-                        "destination": self.config["leader"]["fine_destination"],
-                    }
+                    penalty_info = {"imposed_by": self.leader.id, "amount": penalty, "destination": self.config["leader"]["fine_destination"]}
                     self._penalties_this_round[agent.id] = penalty_info
                     agent.violations += 1
                     self._total_penalties_amount += penalty
-                    # Personal log: penalty for the violator
-                    agent.add_log_entry(
-                        round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                    agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
                         type="penalty",
-                        data={"text": f"You were penalized {penalty:.1f} fish for exceeding the {self.leader_limit:.1f} limit"},
-                    )
-                    # Personal log: penalty notice for the leader
+                        data={"text": f"You were penalized {penalty:.1f} fish for exceeding the {self.leader_limit:.1f} limit"})
                     if self.leader:
-                        self.leader.add_log_entry(
-                            round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                        self.leader.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
                             type="system",
-                            data={"text": f"You penalized {agent.name} {penalty:.1f} fish for exceeding the limit"},
-                        )
+                            data={"text": f"You penalized {agent.name} {penalty:.1f} fish for exceeding the limit"})
 
-            resources_after = {
-                agent.id: agent.resources,
-                "pool": self.pool.amount if self.pool else 0,
-            }
-
+            resources_after = {agent.id: agent.resources, "pool": self.pool.amount if self.pool else 0}
             self.recorder.record_event(
-                turn=self.turn_counter,
-                agent=agent.id,
-                action="fish",
-                amount=actual_taken,
-                reasoning=response.reasoning,
-                resources_before=resources_before,
-                resources_after=resources_after,
-                leader_limit=self.leader_limit,
-                penalty=penalty_info,
+                turn=self.turn_counter, agent=agent.id, action="fish",
+                amount=actual_taken, reasoning=response.reasoning,
+                resources_before=resources_before, resources_after=resources_after,
+                leader_limit=self.leader_limit, penalty=penalty_info,
             )
 
     def _build_harvest_context(self, agent: Agent) -> str:
@@ -1359,6 +1353,22 @@ class Engine:
             penalties_imposed=self._violations_count,
             centrality=centrality,
         )
+
+        # Build structured round history for agent prompts
+        election = self._election_data or {}
+        winner = election.get("winner")
+        winner_name = self.agents.get(winner, Agent(id=winner, name=winner, resources=0)).name if winner else "None"
+        harvest_detail = {a.name: self._harvested_this_round.get(a.id, 0) for a in self.agent_list}
+        self._round_history.append({
+            "round": self.current_round,
+            "winner": winner_name,
+            "winner_votes": election.get("votes", {}).get(winner, 0) if winner else 0,
+            "harvest": harvest_detail,
+            "total_harvest": total_harvest,
+            "leader": self._get_leader_name(),
+            "leader_limit": self.leader_limit,
+            "leader_penalty": self.leader_penalty_rate,
+        })
 
     def _compute_degree_centrality(self) -> dict[str, float]:
         """Compute degree centrality from conversation_log.
@@ -1543,52 +1553,55 @@ class Engine:
     def _call_reflections(self) -> None:
         """Generate personal reflections for each agent after a round.
 
-        Asks the LLM to reflect on what this agent personally experienced,
-        and stores the returned memories in the agent's memory list.
-        Includes the agent's own vote record for self-reflection.
+        LLM calls in parallel, memory writes sequentially.
         """
+        # Phase 1: Build prompts + call LLM in parallel
+        reflection_results = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.agent_list)) as ex:
+            def _reflect(a):
+                harvested = self._harvested_this_round.get(a.id, 0)
+                leader_name = self.leader.name if self.leader else "None"
+                violated = False
+                penalty_msg = ""
+                if self.leader and self.leader_limit is not None:
+                    violated = harvested > self.leader_limit
+                if violated:
+                    penalty_amt = self._penalties_this_round.get(a.id, {}).get("amount", 0)
+                    penalty_msg = f" You violated the limit and paid a penalty of {penalty_amt:.0f} fish."
+
+                vote_record = None
+                for entry in reversed(a.personal_log):
+                    if entry.get("type") == "vote" and entry.get("round") == self.current_round:
+                        vote_record = entry.get("data", {})
+                        break
+
+                prompt = build_reflection_prompt(
+                    agent_name=a.name, round_num=self.current_round,
+                    harvested=harvested, penalty_msg=penalty_msg,
+                    leader_name=leader_name, resources=a.resources,
+                    vote_record=vote_record, personality=a.personality,
+                )
+                try:
+                    return a.id, self.llm.reflect(prompt)
+                except Exception:
+                    return a.id, []
+
+            futures = {ex.submit(_reflect, a): a for a in self.agent_list}
+            for f in concurrent.futures.as_completed(futures):
+                aid, reflections = f.result()
+                reflection_results[aid] = reflections
+
+        # Phase 2: Store memories sequentially
         for agent in self.agent_list:
-            harvested = self._harvested_this_round.get(agent.id, 0)
-            leader_name = self.leader.name if self.leader else "None"
-            violated = False
-            penalty_msg = ""
-            if self.leader and self.leader_limit is not None:
-                violated = harvested > self.leader_limit
-            if violated:
-                penalty_amt = self._penalties_this_round.get(agent.id, {}).get("amount", 0)
-                penalty_msg = f" You violated the limit and paid a penalty of {penalty_amt:.0f} fish."
-
-            # Find the agent's own vote for this round
-            vote_record = None
-            for entry in reversed(agent.personal_log):
-                if entry.get("type") == "vote" and entry.get("round") == self.current_round:
-                    vote_record = entry.get("data", {})
-                    break
-
-            prompt = build_reflection_prompt(
-                agent_name=agent.name,
-                round_num=self.current_round,
-                harvested=harvested,
-                penalty_msg=penalty_msg,
-                leader_name=leader_name,
-                resources=agent.resources,
-                vote_record=vote_record,
-                personality=agent.personality,
-            )
-
-            try:
-                reflections = self.llm.reflect(prompt)
-                for mem in reflections:
-                    if isinstance(mem, dict) and mem.get("content"):
-                        agent.add_memory(
-                            turn=self.turn_counter,
-                            type="reflection",
-                            content=mem["content"],
-                            significance=mem.get("significance", "personal"),
-                            emotional_impact=mem.get("emotional_impact", "neutral"),
-                        )
-            except Exception:
-                pass  # Silence reflection failures -- not critical
+            for mem in reflection_results.get(agent.id, []):
+                if isinstance(mem, dict) and mem.get("content"):
+                    agent.add_memory(
+                        turn=self.turn_counter,
+                        type="reflection",
+                        content=mem["content"],
+                        significance=mem.get("significance", "personal"),
+                        emotional_impact=mem.get("emotional_impact", "neutral"),
+                    )
 
     def _analyze_conversation(self) -> None:
         """Post-hoc analysis: ask a separate LLM call to label conversation significance.

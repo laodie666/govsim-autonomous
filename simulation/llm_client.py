@@ -6,6 +6,7 @@ Easily extendable to other providers.
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import threading
 import time
@@ -73,6 +74,8 @@ class DeepSeekLLM(LLMInterface):
         num_rounds: int = 4,
         turns_per_phase: int = 10,
         fine_destination: str = "destroyed",
+        timeout: float = 30.0,
+        candidacy_cost: float = 25.0,
     ):
         self.model = model
         self.temperature = temperature
@@ -81,36 +84,65 @@ class DeepSeekLLM(LLMInterface):
         self.num_rounds = num_rounds
         self.turns_per_phase = turns_per_phase
         self.fine_destination = fine_destination
+        self.timeout = timeout
+        self.candidacy_cost = candidacy_cost
 
+        import httpx
         self.client = OpenAI(
             api_key=api_key,
             base_url=base_url,
+            timeout=httpx.Timeout(timeout, connect=15.0),
         )
         self._stats = {"calls": 0, "total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_cost": 0.0, "total_time_ms": 0}
         self._stats_lock = threading.Lock()
+        self._call_latencies: list[float] = []  # per-call latencies in seconds
         self._decide_system = self._build_decide_system()
 
     def _call(self, system: str, user: str) -> str:
-        """Make an API call and return the response text."""
+        """Make an API call with a hard wall-clock timeout.
+
+        httpx timeouts are per-read-operation, so slow/streaming APIs can
+        bypass them via chunked transfer. We use concurrent.futures to
+        enforce a true wall-clock deadline.
+
+        On timeout: returns a minimal pass-fallback instead of crashing.
+        """
+        last_error = None
         for attempt in range(self.retries + 1):
-            try:
-                start = time.time()
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                )
-                elapsed_ms = (time.time() - start) * 1000
+            # Submit the API call to a single-worker thread so we can
+            # enforce a hard wall-clock timeout via future.result().
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(self._raw_api_call, system, user)
+                try:
+                    content, elapsed_ms, usage = future.result(timeout=self.timeout)
+                except concurrent.futures.TimeoutError:
+                    # Hard timeout — the inner thread is abandoned but will
+                    # eventually complete or die with the process.
+                    with self._stats_lock:
+                        self._stats.setdefault("timeouts", 0)
+                        self._stats["timeouts"] += 1
+                        self._stats["calls"] += 1
+                    return '{"action": "pass", "reasoning": "API timeout"}'
+                except Exception as e:
+                    last_error = e
+                    err_str = str(e).lower()
+                    if "timeout" in err_str or "timed out" in err_str:
+                        with self._stats_lock:
+                            self._stats.setdefault("timeouts", 0)
+                            self._stats["timeouts"] += 1
+                            self._stats["calls"] += 1
+                        return '{"action": "pass", "reasoning": "API timeout"}'
+                    if attempt < self.retries:
+                        time.sleep(2 ** attempt)
+                        continue
+                    raise RuntimeError(
+                        f"DeepSeek API call failed after {self.retries + 1} attempts: {last_error}"
+                    ) from last_error
 
-                content = response.choices[0].message.content or ""
-                usage = response.usage
-
+                # Success
                 with self._stats_lock:
                     self._stats["calls"] += 1
+                    self._call_latencies.append(elapsed_ms / 1000)
                     if usage:
                         self._stats["total_tokens"] += usage.total_tokens or 0
                         self._stats["prompt_tokens"] += usage.prompt_tokens or 0
@@ -120,17 +152,24 @@ class DeepSeekLLM(LLMInterface):
                             cost = usage.model_extra.get("cost", 0.0)
                         self._stats["total_cost"] += cost or 0.0
                     self._stats["total_time_ms"] += elapsed_ms
-
                 return content
 
-            except Exception as e:
-                if attempt < self.retries:
-                    wait = 2 ** attempt
-                    time.sleep(wait)
-                else:
-                    raise RuntimeError(
-                        f"DeepSeek API call failed after {self.retries + 1} attempts: {e}"
-                    )
+    def _raw_api_call(self, system: str, user: str) -> tuple[str, float, object]:
+        """Perform the raw API call (no timeout logic — caller enforces deadline)."""
+        start = time.time()
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            extra_body={"reasoning": {"effort": "low"}},
+        )
+        elapsed_ms = (time.time() - start) * 1000
+        content = response.choices[0].message.content or ""
+        return content, elapsed_ms, response.usage
 
     def _build_decide_system(self) -> str:
         """Build the system prompt with simulation parameters."""
@@ -145,13 +184,13 @@ class DeepSeekLLM(LLMInterface):
             "=== ROUND STRUCTURE ===\n"
             "Each round has 4 phases:\n"
             "1. Free Interaction \u2014 Talk, form private channels, make deals, plan strategy.\n"
-            "2. Election \u2014 Candidates pay a cost to run, propose a harvest limit and\n"
-            "   penalty rate. All agents vote. Winner\u2019s policy is enforced during harvest.\n"
+            f"2. Election \u2014 Candidates pay a cost of {self.candidacy_cost:.0f} fish to run, propose a harvest limit and\n"
+            f"   penalty rate. All agents vote. Winner\u2019s policy is enforced during harvest.\n"
             "3. Harvest \u2014 Each agent takes fish. Exceeding the leader\u2019s limit triggers a penalty.\n"
             "4. Post-Harvest Interaction \u2014 Discuss results and plan for next round.\n"
             "\n"
             "=== ELECTION DETAILS ===\n"
-            "- Any agent can become a candidate by paying a candidacy cost.\n"
+            f"- Any agent can become a candidate by paying {self.candidacy_cost:.0f} fish.\n"
             "- Each candidate proposes a harvest limit (1-20) and penalty rate (0-5x).\n"
             "- All agents vote secretly. The candidate with the most votes wins.\n"
             "- The winner\u2019s harvest limit and penalty rate are enforced during harvest.\n"
@@ -166,7 +205,9 @@ class DeepSeekLLM(LLMInterface):
             "- accept_invite group=[name]  Join a channel. Cancels your pending group.\n"
             "- reject_invite group=[name]  Decline.\n"
             "- leave_group group=[name]  Return to public. Last member dissolves channel.\n"
-            "- transfer target=[name] amount=[N]  Send fish.\n"
+            "- transfer target=[name] amount=[N]  Send fish to another agent.\n"
+            "  Use transfers to buy votes, fund a candidate, reward allies\n"
+            "  for favorable policy, or back your deals with real money.\n"
             "  [public]=everyone sees it. [private]=only channel members.\n"
             "- pass  Nothing this turn.\n"
             "\n"
@@ -318,4 +359,42 @@ class DeepSeekLLM(LLMInterface):
 
     def stats(self) -> dict:
         """Return usage statistics."""
-        return dict(self._stats)
+        with self._stats_lock:
+            return dict(self._stats)
+
+    def latency_stats(self) -> dict:
+        """Return per-call latency distribution (seconds)."""
+        with self._stats_lock:
+            lats = list(self._call_latencies)
+        if not lats:
+            return {"count": 0}
+        sorted_lats = sorted(lats)
+        n = len(sorted_lats)
+        def pct(p):
+            idx = int(n * p / 100)
+            return sorted_lats[min(idx, n - 1)]
+        buckets = {"<1s": 0, "1-5s": 0, "5-10s": 0, "10-30s": 0, "30-60s": 0, ">60s": 0}
+        for lat in lats:
+            if lat < 1:
+                buckets["<1s"] += 1
+            elif lat < 5:
+                buckets["1-5s"] += 1
+            elif lat < 10:
+                buckets["5-10s"] += 1
+            elif lat < 30:
+                buckets["10-30s"] += 1
+            elif lat < 60:
+                buckets["30-60s"] += 1
+            else:
+                buckets[">60s"] += 1
+        mean = sum(lats) / n
+        return {
+            "count": n,
+            "mean": mean,
+            "median": pct(50),
+            "min": sorted_lats[0],
+            "max": sorted_lats[-1],
+            "p95": pct(95),
+            "p99": pct(99),
+            "buckets": buckets,
+        }

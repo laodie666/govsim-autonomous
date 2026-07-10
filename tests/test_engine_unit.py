@@ -204,7 +204,7 @@ class TestElectionAndLeader:
             "simulation": {"num_rounds": 2, "turns_per_phase": 2},
             "agents": {"names": ["Alice", "Bob", "Charlie"], "starting_resources": 50.0},
             "resources": {"carrying_capacity": 100.0, "regeneration_factor": 1.5},
-            "leader": {"fine_destination": "common_pool"},
+            "leader": {"fine_destination": "common_pool", "candidacy_cost": 5.0},
             "election": {"method": "plurality", "elections_every_round": True},
         })
 

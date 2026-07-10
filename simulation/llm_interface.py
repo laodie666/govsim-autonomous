@@ -7,6 +7,7 @@ StubLLM provides deterministic responses for testing.
 from __future__ import annotations
 
 import random
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
@@ -91,19 +92,22 @@ class StubLLM(LLMInterface):
     """Returns pre-scripted responses for deterministic testing.
 
     Each call returns the next response in the list, cycling if needed.
+    Thread-safe for parallel use.
     """
 
     def __init__(self, responses: list[dict] = None):
         self.responses = responses or []
         self.call_count = 0
+        self._stub_lock = threading.Lock()
 
     def _next(self) -> dict:
-        """Get the next response, cycling if exhausted."""
+        """Get the next response, cycling if exhausted (thread-safe)."""
         if not self.responses:
             return {"action": "pass", "reasoning": "No stub response configured"}
-        idx = self.call_count % len(self.responses)
-        self.call_count += 1
-        return self.responses[idx]
+        with self._stub_lock:
+            idx = self.call_count % len(self.responses)
+            self.call_count += 1
+            return self.responses[idx]
 
     def decide(self, prompt: str) -> LLMResponse:
         r = self._next()

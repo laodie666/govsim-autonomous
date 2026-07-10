@@ -29,7 +29,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "fine_destination": "leader_stash",
         "default_limit": 10.0,
         "default_penalty_rate": 0.0,
-        "candidacy_cost": 5.0,
+        "candidacy_cost": 25.0,
     },
     "election": {
         "method": "plurality",

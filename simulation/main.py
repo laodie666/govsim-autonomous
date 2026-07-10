@@ -103,6 +103,7 @@ def main():
 
         base_url = config["llm"].get("base_url", "https://api.deepseek.com")
         print(f"[main] Using LLM (model={config['llm']['model']}, base_url={base_url})")
+        timeout = config["llm"].get("timeout", 30.0)
         llm = DeepSeekLLM(
             api_key=api_key,
             base_url=base_url,
@@ -112,6 +113,8 @@ def main():
             num_rounds=config["simulation"]["num_rounds"],
             turns_per_phase=config["simulation"]["turns_per_phase"],
             fine_destination=config["leader"]["fine_destination"],
+            timeout=timeout,
+            candidacy_cost=config["leader"]["candidacy_cost"],
         )
 
     # Wrap in RecordingLLM if --record-prompts
@@ -180,9 +183,17 @@ def main():
 
     if not args.stub and isinstance(llm, DeepSeekLLM):
         s = llm.stats()
+        ls = llm.latency_stats()
         print(f"[main] LLM stats: {s['calls']} calls, "
               f"{s['total_tokens']} tokens, "
-              f"{s['total_time_ms'] / 1000:.1f}s total")
+              f"{s['total_time_ms'] / 1000:.1f}s cumulative")
+        if ls.get("count"):
+            print(f"[main] Latency: mean={ls['mean']:.1f}s, median={ls['median']:.1f}s, "
+                  f"min={ls['min']:.1f}s, max={ls['max']:.1f}s, "
+                  f"p95={ls['p95']:.1f}s, p99={ls['p99']:.1f}s")
+            buckets = ls['buckets']
+            bucket_str = ", ".join(f"{k}:{v}" for k, v in buckets.items())
+            print(f"[main] Latency buckets: {bucket_str}")
 
 
 if __name__ == "__main__":
