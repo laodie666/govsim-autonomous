@@ -109,50 +109,55 @@ class DeepSeekLLM(LLMInterface):
         """
         last_error = None
         for attempt in range(self.retries + 1):
-            # Submit the API call to a single-worker thread so we can
-            # enforce a hard wall-clock timeout via future.result().
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            try:
                 future = ex.submit(self._raw_api_call, system, user)
-                try:
-                    content, elapsed_ms, usage = future.result(timeout=self.timeout)
-                except concurrent.futures.TimeoutError:
-                    # Hard timeout — the inner thread is abandoned but will
-                    # eventually complete or die with the process.
+                content, elapsed_ms, usage = future.result(timeout=self.timeout)
+            except concurrent.futures.TimeoutError:
+                ex.shutdown(wait=False)
+                with self._stats_lock:
+                    self._stats.setdefault("timeouts", 0)
+                    self._stats["timeouts"] += 1
+                    self._stats["calls"] += 1
+                return '{"action": "pass", "reasoning": "API timeout"}'
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                if "timeout" in err_str or "timed out" in err_str:
+                    ex.shutdown(wait=False)
                     with self._stats_lock:
                         self._stats.setdefault("timeouts", 0)
                         self._stats["timeouts"] += 1
                         self._stats["calls"] += 1
                     return '{"action": "pass", "reasoning": "API timeout"}'
-                except Exception as e:
-                    last_error = e
-                    err_str = str(e).lower()
-                    if "timeout" in err_str or "timed out" in err_str:
-                        with self._stats_lock:
-                            self._stats.setdefault("timeouts", 0)
-                            self._stats["timeouts"] += 1
-                            self._stats["calls"] += 1
-                        return '{"action": "pass", "reasoning": "API timeout"}'
-                    if attempt < self.retries:
-                        time.sleep(2 ** attempt)
-                        continue
-                    raise RuntimeError(
-                        f"DeepSeek API call failed after {self.retries + 1} attempts: {last_error}"
-                    ) from last_error
+                if attempt < self.retries:
+                    ex.shutdown(wait=False)
+                    time.sleep(2 ** attempt)
+                    continue
+                raise RuntimeError(
+                    f"DeepSeek API call failed after {self.retries + 1} attempts: {last_error}"
+                ) from last_error
 
-                # Success
-                with self._stats_lock:
-                    self._stats["calls"] += 1
-                    self._call_latencies.append(elapsed_ms / 1000)
-                    if usage:
-                        self._stats["total_tokens"] += usage.total_tokens or 0
-                        self._stats["prompt_tokens"] += usage.prompt_tokens or 0
-                        self._stats["completion_tokens"] += usage.completion_tokens or 0
-                        cost = getattr(usage, "cost", None)
-                        if cost is None and usage.model_extra:
-                            cost = usage.model_extra.get("cost", 0.0)
-                        self._stats["total_cost"] += cost or 0.0
-                    self._stats["total_time_ms"] += elapsed_ms
-                return content
+            # Success — executor thread already done, safe to shut down
+            ex.shutdown(wait=False)
+            with self._stats_lock:
+                self._stats["calls"] += 1
+                self._call_latencies.append(elapsed_ms / 1000)
+                if usage:
+                    self._stats["total_tokens"] += usage.total_tokens or 0
+                    self._stats["prompt_tokens"] += usage.prompt_tokens or 0
+                    self._stats["completion_tokens"] += usage.completion_tokens or 0
+                    cost = getattr(usage, "cost", None)
+                    if cost is None and usage.model_extra:
+                        cost = usage.model_extra.get("cost", 0.0)
+                    self._stats["total_cost"] += cost or 0.0
+                self._stats["total_time_ms"] += elapsed_ms
+            return content
+
+        # Exhausted retries
+        raise RuntimeError(
+            f"DeepSeek API call failed after {self.retries + 1} attempts"
+        )
 
     def _raw_api_call(self, system: str, user: str) -> tuple[str, float, object]:
         """Perform the raw API call (no timeout logic — caller enforces deadline)."""
