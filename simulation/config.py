@@ -22,7 +22,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "resources": {
         "carrying_capacity": 100.0,
-        "regeneration_factor": 1.5,
+        "regeneration_factor": 2.0,
         "fish_per_harvest": 5.0,
     },
     "leader": {

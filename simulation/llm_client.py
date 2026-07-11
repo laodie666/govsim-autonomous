@@ -76,7 +76,7 @@ class DeepSeekLLM(LLMInterface):
         fine_destination: str = "destroyed",
         timeout: float = 30.0,
         candidacy_cost: float = 25.0,
-        regeneration_factor: float = 1.5,
+        regeneration_factor: float = 2.0,
         carrying_capacity: float = 100.0,
         default_limit: float = 10.0,
         default_penalty_rate: float = 0.0,
@@ -186,7 +186,7 @@ class DeepSeekLLM(LLMInterface):
             ],
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            extra_body={"reasoning": {"effort": "low"}},
+            extra_body=None,
         )
         elapsed_ms = (time.time() - start) * 1000
         content = response.choices[0].message.content or ""

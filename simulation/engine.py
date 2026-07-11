@@ -756,34 +756,38 @@ class Engine:
         amount = response.amount or 0.0
         target_agent = self.get_agent(target_id.lower()) if target_id else None
 
-        if target_agent and amount > 0:
-            action = TransferAction(
-                agent_id=agent.id,
-                target_id=target_id,
-                amount=amount,
-                reasoning=response.reasoning,
-            )
-            # Validate before executing
-            validation = validate_action(action, agent)
-            if not validation.valid:
-                # Transfer rejected -- record as pass with reason
-                response.reasoning = f"Transfer rejected: {validation.reason}"
-                response.action = "pass"
-                return
+        if not target_agent or amount <= 0:
+            response.action = "pass"
+            response.reasoning = f"Transfer not executed: {'no target' if not target_agent else 'amount is 0'}"
+            return
 
-            execute_transfer(action, agent, target_agent)
-            # Personal log: transfer_sent for sender
-            agent.add_log_entry(
-                round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
-                type="transfer_sent",
-                data={"to": target_agent.name, "amount": amount},
-            )
-            # Personal log: transfer_received for receiver
-            target_agent.add_log_entry(
-                round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
-                type="transfer_received",
-                data={"from": agent.name, "amount": amount},
-            )
+        action = TransferAction(
+            agent_id=agent.id,
+            target_id=target_id,
+            amount=amount,
+            reasoning=response.reasoning,
+        )
+        # Validate before executing
+        validation = validate_action(action, agent)
+        if not validation.valid:
+            # Transfer rejected -- record as pass with reason
+            response.reasoning = f"Transfer rejected: {validation.reason}"
+            response.action = "pass"
+            return
+
+        execute_transfer(action, agent, target_agent)
+        # Personal log: transfer_sent for sender
+        agent.add_log_entry(
+            round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+            type="transfer_sent",
+            data={"to": target_agent.name, "amount": amount},
+        )
+        # Personal log: transfer_received for receiver
+        target_agent.add_log_entry(
+            round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+            type="transfer_received",
+            data={"from": agent.name, "amount": amount},
+        )
 
     def _describe_agent_action(self, agent: Agent, response, normalized: str) -> str:
         """Describe the agent's last action in a short sentence for the prompt."""

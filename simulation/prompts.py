@@ -193,19 +193,20 @@ def build_harvest_prompt(
     """Build the prompt for the harvest phase."""
     personality_block = f"\nPersonality: {personality}\n" if personality else ""
 
-    leader_block = ""
+    limit_str = f"{limit:.1f}" if limit is not None else "none"
+    penalty_str = f"{penalty_rate:.1f}x" if penalty_rate else "none"
+
     if leader_name:
-        leader_block = (
-            f"Leader: {leader_name} (limit={limit:.1f}, penalty={penalty_rate:.1f}x)"
-        )
+        limit_line = f"Leader: {leader_name} (limit={limit_str}, penalty={penalty_str})"
+    else:
+        limit_line = f"Default policy: limit={limit_str}, penalty={penalty_str}"
 
     prompt = (
         f"You are {agent_name}. Round {round_num}, harvest."
         f"{personality_block}"
         f"\nYour fish: {resources:.1f} | Lake: {pool_status}"
+        f"\n{limit_line}"
     )
-    if leader_block:
-        prompt += f"\n{leader_block}"
     if memory_context:
         prompt += f"\n{memory_context}"
     prompt += "\nHow many fish do you take?"
