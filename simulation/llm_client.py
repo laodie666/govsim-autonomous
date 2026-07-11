@@ -76,6 +76,10 @@ class DeepSeekLLM(LLMInterface):
         fine_destination: str = "destroyed",
         timeout: float = 30.0,
         candidacy_cost: float = 25.0,
+        regeneration_factor: float = 1.5,
+        carrying_capacity: float = 100.0,
+        default_limit: float = 10.0,
+        default_penalty_rate: float = 0.0,
     ):
         self.model = model
         self.temperature = temperature
@@ -86,6 +90,10 @@ class DeepSeekLLM(LLMInterface):
         self.fine_destination = fine_destination
         self.timeout = timeout
         self.candidacy_cost = candidacy_cost
+        self.regeneration_factor = regeneration_factor
+        self.carrying_capacity = carrying_capacity
+        self.default_limit = default_limit
+        self.default_penalty_rate = default_penalty_rate
 
         import httpx
         self.client = OpenAI(
@@ -105,7 +113,7 @@ class DeepSeekLLM(LLMInterface):
         bypass them via chunked transfer. We use concurrent.futures to
         enforce a true wall-clock deadline.
 
-        On timeout: returns a minimal pass-fallback instead of crashing.
+        On timeout: retries up to self.retries times, then falls back to pass.
         """
         last_error = None
         for attempt in range(self.retries + 1):
@@ -118,6 +126,10 @@ class DeepSeekLLM(LLMInterface):
                 with self._stats_lock:
                     self._stats.setdefault("timeouts", 0)
                     self._stats["timeouts"] += 1
+                if attempt < self.retries:
+                    time.sleep(2 ** attempt)
+                    continue
+                with self._stats_lock:
                     self._stats["calls"] += 1
                 return '{"action": "pass", "reasoning": "API timeout"}'
             except Exception as e:
@@ -128,6 +140,10 @@ class DeepSeekLLM(LLMInterface):
                     with self._stats_lock:
                         self._stats.setdefault("timeouts", 0)
                         self._stats["timeouts"] += 1
+                    if attempt < self.retries:
+                        time.sleep(2 ** attempt)
+                        continue
+                    with self._stats_lock:
                         self._stats["calls"] += 1
                     return '{"action": "pass", "reasoning": "API timeout"}'
                 if attempt < self.retries:
@@ -135,7 +151,7 @@ class DeepSeekLLM(LLMInterface):
                     time.sleep(2 ** attempt)
                     continue
                 raise RuntimeError(
-                    f"DeepSeek API call failed after {self.retries + 1} attempts: {last_error}"
+                    f"OpenAI-compatible API call failed after {self.retries + 1} attempts: {last_error}"
                 ) from last_error
 
             # Success — executor thread already done, safe to shut down
@@ -182,23 +198,29 @@ class DeepSeekLLM(LLMInterface):
             "You are an agent in a fishing village simulation.\n"
             f"- This simulation runs for {self.num_rounds} rounds, "
             f"each with {self.turns_per_phase} turns per phase.\n"
-            "- Goal: accumulate personal fish.\n"
-            "- The shared lake regenerates each round. "
-            "Below 0.01 fish it COLLAPSES permanently.\n"
+            "- Goal: maximize your personal fish by the end of the game.\n"
+            "  Holding fish is safe, but investing a few in the right\n"
+            "  candidate can earn you more through better policy.\n"
+            f"- The lake has a carrying capacity of {self.carrying_capacity:.0f} fish "
+            f"and regenerates at {self.regeneration_factor:.0f}x per round."
+            " Below 0.01 fish it COLLAPSES permanently.\n"
             "\n"
             "=== ROUND STRUCTURE ===\n"
             "Each round has 4 phases:\n"
             "1. Free Interaction \u2014 Talk, form private channels, make deals, plan strategy.\n"
-            f"2. Election \u2014 Candidates pay a cost of {self.candidacy_cost:.0f} fish to run, propose a harvest limit and\n"
-            f"   penalty rate. All agents vote. Winner\u2019s policy is enforced during harvest.\n"
+            f"2. Election \u2014 You can CHOOSE to run for leader (costs {self.candidacy_cost:.0f} fish) or pass.\n"
+            f"   If you run, you propose a harvest limit and penalty rate. All agents vote.\n"
+            f"   Winner\u2019s policy is enforced during harvest.\n"
             "3. Harvest \u2014 Each agent takes fish. Exceeding the leader\u2019s limit triggers a penalty.\n"
             "4. Post-Harvest Interaction \u2014 Discuss results and plan for next round.\n"
             "\n"
             "=== ELECTION DETAILS ===\n"
-            f"- Any agent can become a candidate by paying {self.candidacy_cost:.0f} fish.\n"
+            f"- You can CHOOSE to run for leader (costs {self.candidacy_cost:.0f} fish) or pass.\n"
             "- Each candidate proposes a harvest limit (1-20) and penalty rate (0-5x).\n"
             "- All agents vote secretly. The candidate with the most votes wins.\n"
             "- The winner\u2019s harvest limit and penalty rate are enforced during harvest.\n"
+            "- If NO one runs for leader, the DEFAULT harvest limit is "
+            f"{self.default_limit:.0f} and default penalty rate is {self.default_penalty_rate:.0f}x.\n"
             "- Penalty = (your harvest - limit) \u00d7 penalty_rate, deducted from your fish.\n"
             f"- Penalty fish go to the {self._fine_destination_label()}.\n"
             "\n"
@@ -215,6 +237,9 @@ class DeepSeekLLM(LLMInterface):
             "  for favorable policy, or back your deals with real money.\n"
             "  [public]=everyone sees it. [private]=only channel members.\n"
             "- pass  Nothing this turn.\n"
+            "\n"
+            "Note: You see Turn X/Y each phase — use your turns wisely. Be aware and mindful of what had been said, wasting time repeating what others said or endlessly trying to negotiate will result in a wasted phase.\n"
+            "Be concise and direct with your phrasing."
             "\n"
             "Reply JSON only: {\"action\",\"target\",\"targets\",\"group\",\"message\",\"amount\",\"reasoning\"}\n"
             "Only include fields used."
@@ -257,6 +282,21 @@ class DeepSeekLLM(LLMInterface):
             group=data.get("group"),
             reasoning=data.get("reasoning", ""),
         )
+
+    _NOMINATE_SYSTEM = (
+        "You are deciding whether to run for village leader.\n"
+        f"Running costs fish. If you win, you set the harvest limit and penalty rate.\n"
+        "If NO one runs, the default harvest limit and penalty rate apply.\n"
+        "Reply JSON only: {\"run\": true/false, \"reasoning\":\"...\"}"
+    )
+
+    def nominate(self, prompt: str) -> bool:
+        raw = self._call(self._NOMINATE_SYSTEM, prompt)
+        try:
+            data = _extract_json(raw)
+        except ValueError:
+            data = {}
+        return data.get("run", False)
 
     _CAMPAIGN_SYSTEM = (
         "You are running for village leader. Propose a harvest limit and penalty rate.\n"

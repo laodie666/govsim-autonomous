@@ -48,6 +48,11 @@ class LLMInterface(ABC):
         ...
 
     @abstractmethod
+    def nominate(self, prompt: str) -> bool:
+        """Return True if the agent wants to run for leader, False otherwise."""
+        ...
+
+    @abstractmethod
     def campaign(self, prompt: str) -> CampaignPlatform:
         ...
 
@@ -121,6 +126,14 @@ class StubLLM(LLMInterface):
             reasoning=r.get("reasoning", ""),
         )
 
+    def nominate(self, prompt: str) -> bool:
+        """Stub nominate — always returns True (agent runs if eligible).
+
+        Does NOT consume from the response list, matching old auto-candidacy
+        behavior for backward compatibility.
+        """
+        return True
+
     def campaign(self, prompt: str) -> CampaignPlatform:
         r = self._next()
         return CampaignPlatform(
@@ -178,6 +191,11 @@ class RecordingLLM(LLMInterface):
 
     def decide(self, prompt: str) -> LLMResponse:
         response = self.inner.decide(prompt)
+        self.history.append({"prompt": prompt, "response": response})
+        return response
+
+    def nominate(self, prompt: str) -> bool:
+        response = self.inner.nominate(prompt)
         self.history.append({"prompt": prompt, "response": response})
         return response
 

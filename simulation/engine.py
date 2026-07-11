@@ -22,6 +22,7 @@ from simulation.llm_interface import LLMInterface, LLMResponse
 from simulation.config import load_config
 from simulation.prompts import (
     build_decision_prompt,
+    build_nomination_prompt,
     build_campaign_prompt,
     build_vote_prompt,
     build_harvest_prompt,
@@ -1079,19 +1080,41 @@ class Engine:
 
         return "\n\n".join(parts) if parts else ""
     def _run_election(self) -> None:
-        """Run the election phase -- campaign + vote in parallel."""
+        """Run the election phase -- nomination, campaign + vote in parallel."""
         self.current_phase = "election"
         self.recorder.start_phase("election")
 
-        # Determine candidates
+        # Phase 0: Nomination — ask each eligible agent if they want to run
         candidacy_cost = self.config["leader"].get("candidacy_cost", 5.0)
         candidates = []
         for agent in self.agent_list:
-            if agent.resources >= candidacy_cost:
+            if agent.resources < candidacy_cost:
+                if self.verbose:
+                    print(f"[sim]       {agent.name}: cannot afford candidacy cost ({candidacy_cost:.0f} fish)")
+                agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                    type="system",
+                    data={"text": f"Cannot afford candidacy cost of {candidacy_cost:.0f} fish (have {agent.resources:.0f})"})
+                continue
+
+            # Ask agent if they want to run
+            ctx = self._build_nomination_context(agent, candidacy_cost)
+            wants_to_run = self.llm.nominate(ctx)
+            self.turn_counter += 1
+
+            if wants_to_run:
                 agent.deduct_resources(candidacy_cost)
                 candidates.append(agent)
-            elif self.verbose:
-                print(f"[sim]       {agent.name}: cannot afford candidacy cost ({candidacy_cost:.0f} fish)")
+                if self.verbose:
+                    print(f"[sim]       {agent.name}: running for leader")
+                agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                    type="system",
+                    data={"text": f"Declared candidacy for leader (paid {candidacy_cost:.0f} fish)"})
+            else:
+                if self.verbose:
+                    print(f"[sim]       {agent.name}: declined to run")
+                agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
+                    type="system",
+                    data={"text": "Declined to run for leader"})
 
         # Handle no-candidate fallback
         if not candidates:
@@ -1220,6 +1243,17 @@ class Engine:
             resources=voter.resources,
         )
 
+    def _build_nomination_context(self, agent: Agent, candidacy_cost: float) -> str:
+        """Build nomination prompt using prompts.py."""
+        return build_nomination_prompt(
+            agent_name=agent.name,
+            resources=agent.resources,
+            candidacy_cost=candidacy_cost,
+            pool_status=self._pool_status(),
+            memory_context=self._build_memory_context(agent),
+            personality=agent.personality,
+        )
+
     def _run_harvesting(self) -> None:
         """Run the harvesting phase -- agents fish.
 
@@ -1264,7 +1298,7 @@ class Engine:
                 agent.add_resources(actual_taken)
 
             if self.verbose:
-                limit_warn = f"(limit={self.leader_limit}, penalty={float(response.amount or harvest_amount) - self.leader_limit:.1f} over)" if (self.leader and self.leader_limit is not None and harvest_amount > self.leader_limit) else ""
+                limit_warn = f"(limit={self.leader_limit}, penalty={float(response.amount or harvest_amount) - self.leader_limit:.1f} over)" if (self.leader_limit is not None and harvest_amount > self.leader_limit) else ""
                 print(f"[sim]       {agent.name}: take {actual_taken:.1f} fish (pool now {self.pool.amount:.1f}) {limit_warn}")
             self._harvested_this_round[agent.id] = actual_taken
             self._total_harvested += actual_taken
@@ -1286,7 +1320,7 @@ class Engine:
                         data={"pool_before": pool_before, "pool_after": pool_after, "amount": actual_taken},
                     )
 
-            if self.leader and self.leader_limit is not None:
+            if self.leader_limit is not None:
                 penalty = calculate_penalty(
                     harvest_amount=actual_taken, limit=self.leader_limit,
                     penalty_rate=self.leader_penalty_rate or 0,
@@ -1298,7 +1332,8 @@ class Engine:
                         pool=self.pool, destination=self.config["leader"]["fine_destination"],
                         non_violators=[a for a in self.agent_list if a.id != agent.id],
                     )
-                    penalty_info = {"imposed_by": self.leader.id, "amount": penalty, "destination": self.config["leader"]["fine_destination"]}
+                    enforcer = self.leader.id if self.leader else "default"
+                    penalty_info = {"imposed_by": enforcer, "amount": penalty, "destination": self.config["leader"]["fine_destination"]}
                     self._penalties_this_round[agent.id] = penalty_info
                     agent.violations += 1
                     self._total_penalties_amount += penalty
@@ -1439,7 +1474,7 @@ class Engine:
             harvested = self._harvested_this_round.get(agent.id, 0)
             violated = False
             penalty = self._penalties_this_round.get(agent.id)
-            if self.leader and self.leader_limit is not None:
+            if self.leader_limit is not None:
                 violated = harvested > self.leader_limit
             agent_results[agent.id] = {
                 "harvested": harvested,
@@ -1563,7 +1598,7 @@ class Engine:
                 leader_name = self.leader.name if self.leader else "None"
                 violated = False
                 penalty_msg = ""
-                if self.leader and self.leader_limit is not None:
+                if self.leader_limit is not None:
                     violated = harvested > self.leader_limit
                 if violated:
                     penalty_amt = self._penalties_this_round.get(a.id, {}).get("amount", 0)

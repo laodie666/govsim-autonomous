@@ -465,12 +465,11 @@ class TestFullPipelineElectionAndPolicy:
             f"Bob should have 49.0 resources, got {bob.resources}"
 
     def test_leaderless_round_default_policy(self):
-        """No candidates → default limit and penalty rate are SET but NOT enforced.
+        """No candidates → default limit and penalty rate are enforced.
 
-        NOTE: The engine only enforces penalties when `self.leader is not None`
-        (see engine.py harvest handler: `if self.leader and self.leader_limit ...`).
-        When no candidates run, no leader is elected, so default_limit/default_penalty_rate
-        are set as fallback values but no enforcement occurs.
+        The engine applies default_limit/default_penalty_rate even when
+        no leader is elected. This gives agents a real incentive to
+        elect a leader who can set more favorable policy.
         """
         config = load_config({
             "simulation": {"num_rounds": 1, "turns_per_phase": 1},
@@ -485,19 +484,19 @@ class TestFullPipelineElectionAndPolicy:
         engine = Engine(config, llm=StubLLM(responses), seed=42)
         engine.run()
 
-        # No leader elected; default limit/rate set but no enforcement
+        # No leader elected; default limit/rate set and enforced
         assert engine.leader is None
         assert engine.leader_limit == 10.0
         assert engine.leader_penalty_rate == 0.5
 
-        # No enforcement because self.leader is None
-        # Both agents fished but no violations recorded
+        # Default limit IS enforced even without a leader
+        # Alice took 0 fish (no violation), Bob took 12 (exceeds limit of 10)
         alice = engine.get_agent("alice")
         bob = engine.get_agent("bob")
         assert alice.violations == 0, \
-            "Alice should have 0 violations (no leader = no enforcement)"
-        assert bob.violations == 0, \
-            "Bob should have 0 violations (no leader = no enforcement)"
+            "Alice should have 0 violations (took 0 fish)"
+        assert bob.violations == 1, \
+            "Bob should have 1 violation (took 12, limit is 10)"
 
     def test_mixed_candidacy_affordability(self):
         """Some agents can afford candidacy cost, some can't → only eligible run."""

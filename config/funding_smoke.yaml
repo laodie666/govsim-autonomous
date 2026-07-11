@@ -1,0 +1,30 @@
+simulation:
+  num_rounds: 1
+  turns_per_phase: 1
+agents:
+  names: [Sage, River, Ash, Quinn, Kai]
+  starting_resources: 30.0
+  personalities:
+    Sage: "You are a long-term thinker who believes the lake must last. You WANT to be leader so you can set a low harvest limit (3-4) with a high penalty to protect the lake for future rounds. You always stay within limits yourself. You form alliances with anyone who shares your conservation values."
+    River: "You are pragmatic and adaptable. You're open to being leader — you'd set moderate limits (8-10) with fair penalties. You follow rules if the leader is fair, but exceed limits if others do. You vote for whoever benefits you most."
+    Ash: "You are competitive and opportunistic. You WANT to be leader — you'd set high limits (12-15) and collect penalty fish, then share the stash with allies who backed you. You form private groups to negotiate deals and aren't afraid to bend rules."
+    Quinn: "You are a coalition-builder. You WANT to be leader so you can reward your supporters with high limits and share penalty fish with them. You actively create private channels, negotiate vote trades, and make deals. You keep promises to allies."
+    Kai: "You are cautious and observant. You do NOT want to be leader — too much risk and responsibility. You prefer following a strong leader. You watch others before committing. If most cooperate, you cooperate. If cheating is widespread, you'll cheat too."
+resources:
+  carrying_capacity: 200.0
+  regeneration_factor: 2.0
+  fish_per_harvest: 5.0
+leader:
+  fine_destination: leader_stash
+  default_limit: 5.0
+  default_penalty_rate: 1.0
+  candidacy_cost: 40.0
+election:
+  method: plurality
+  elections_every_round: true
+llm:
+  provider: openrouter
+  base_url: https://openrouter.ai/api/v1
+  model: deepseek/deepseek-v4-flash
+  temperature: 0.7
+  max_tokens: 500

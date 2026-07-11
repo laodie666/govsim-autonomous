@@ -115,6 +115,10 @@ def main():
             fine_destination=config["leader"]["fine_destination"],
             timeout=timeout,
             candidacy_cost=config["leader"]["candidacy_cost"],
+            regeneration_factor=config["resources"].get("regeneration_factor", 1.5),
+            carrying_capacity=config["resources"].get("carrying_capacity", 100.0),
+            default_limit=config["leader"].get("default_limit", 10.0),
+            default_penalty_rate=config["leader"].get("default_penalty_rate", 0.0),
         )
 
     # Wrap in RecordingLLM if --record-prompts

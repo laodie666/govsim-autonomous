@@ -151,6 +151,34 @@ def build_vote_prompt(
     return "\n".join(lines)
 
 
+def build_nomination_prompt(
+    agent_name: str,
+    resources: float,
+    candidacy_cost: float,
+    pool_status: str,
+    memory_context: str = "",
+    personality: str | None = None,
+) -> str:
+    """Build the prompt for the nomination phase.
+
+    The agent decides whether to run for leader or pass.
+    """
+    personality_block = f"\nPersonality: {personality}\n" if personality else ""
+
+    prompt = (
+        f"You are {agent_name}. An election is being held."
+        f"{personality_block}"
+        f"\nYour fish: {resources:.1f} | Lake: {pool_status}"
+        f"\nYou can CHOOSE to run for leader (costs {candidacy_cost:.0f} fish) or pass."
+        f"\nIf you run, you will set a harvest limit and penalty rate if you win."
+    )
+    if memory_context:
+        prompt += f"\n{memory_context}"
+
+    prompt += "\nReply JSON: {\"run\": true/false, \"reasoning\":\"...\"}"
+    return prompt
+
+
 def build_harvest_prompt(
     agent_name: str,
     resources: float,

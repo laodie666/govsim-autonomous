@@ -47,7 +47,7 @@ def calculate_penalty(
 def distribute_fine(
     penalty_amount: float,
     violator: Agent,
-    leader: Agent,
+    leader: Agent | None,
     pool: ResourcePool,
     destination: str,
     non_violators: list[Agent] | None = None,
@@ -57,7 +57,7 @@ def distribute_fine(
     The fine is always deducted from the violator first.
     What happens to those fish depends on destination:
 
-    - "leader_stash": The leader receives the fish.
+    - "leader_stash": The leader receives the fish. If no leader, fish are destroyed.
     - "common_pool": The fish go back to the shared resource pool.
     - "destroyed": The fish are removed from the system entirely.
     - "redistribute": The fish are split equally among non-violators.
@@ -65,7 +65,7 @@ def distribute_fine(
     Args:
         penalty_amount: The penalty amount in fish to distribute.
         violator: The agent who violated the limit.
-        leader: The current elected leader.
+        leader: The current elected leader (or None if no leader).
         pool: The shared resource pool.
         destination: Where the penalty fish should go.
         non_violators: List of agents who did not violate (for redistribute).
@@ -87,7 +87,9 @@ def distribute_fine(
         return
 
     if destination == "leader_stash":
-        leader.add_resources(actual_penalty)
+        if leader:
+            leader.add_resources(actual_penalty)
+        # else: no leader — fish are destroyed (vanish from system)
 
     elif destination == "common_pool":
         pool.amount += actual_penalty
