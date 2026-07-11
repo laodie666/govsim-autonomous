@@ -80,6 +80,7 @@ class DeepSeekLLM(LLMInterface):
         carrying_capacity: float = 100.0,
         default_limit: float = 10.0,
         default_penalty_rate: float = 0.0,
+        post_harvest_interaction: bool = True,
     ):
         self.model = model
         self.temperature = temperature
@@ -94,6 +95,7 @@ class DeepSeekLLM(LLMInterface):
         self.carrying_capacity = carrying_capacity
         self.default_limit = default_limit
         self.default_penalty_rate = default_penalty_rate
+        self.post_harvest_interaction = post_harvest_interaction
 
         import httpx
         self.client = OpenAI(
@@ -206,14 +208,14 @@ class DeepSeekLLM(LLMInterface):
             "(up to the cap). Below 0.01 it collapses permanently.\n"
             "\n"
             "=== ROUND STRUCTURE ===\n"
-            "Each round has 4 phases:\n"
+            f"Each round has {'4' if self.post_harvest_interaction else '3'} phases:\n"
             "1. Free Interaction \u2014 Talk, form private channels, make deals, plan strategy.\n"
             f"2. Election \u2014 You can CHOOSE to run for leader (costs {self.candidacy_cost:.0f} fish) or pass.\n"
             f"   If you run, you propose a harvest limit and penalty rate. All agents vote.\n"
             f"   Winner\u2019s policy is enforced during harvest.\n"
             "3. Harvest \u2014 Each agent takes fish. Exceeding the leader\u2019s limit triggers a penalty.\n"
-            "4. Post-Harvest Interaction \u2014 Discuss results and plan for next round.\n"
-            "\n"
+            + ("4. Post-Harvest Interaction \u2014 Discuss results and plan for next round.\n" if self.post_harvest_interaction else "")
+            + "\n"
             "=== ELECTION DETAILS ===\n"
             f"- You can CHOOSE to run for leader (costs {self.candidacy_cost:.0f} fish) or pass.\n"
             "- Each candidate proposes a harvest limit and penalty rate.\n"

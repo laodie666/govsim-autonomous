@@ -16,8 +16,8 @@ resources:
   fish_per_harvest: 5.0
 leader:
   fine_destination: leader_stash
-  default_limit: 5.0
-  default_penalty_rate: 1.0
+  default_limit: 10.0
+  default_penalty_rate: 0
   candidacy_cost: 30.0
 election:
   method: plurality

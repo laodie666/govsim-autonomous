@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GovSim Visualizer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.5; }
+  #app { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #38bdf8; }
+  .header .run-id { font-size: 13px; color: #94a3b8; }
+  .file-btn { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background .15s; }
+  .file-btn:hover { background: #334155; }
+
+  /* Config bar */
+  .config-bar { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 16px; background: #1e293b; border-radius: 8px; margin-bottom: 20px; font-size: 13px; color: #94a3b8; }
+  .config-bar span { white-space: nowrap; }
+  .config-bar strong { color: #e2e8f0; }
+
+  /* Summary cards */
+  .summary-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .summary-card { background: #1e293b; border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 140px; }
+  .summary-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #64748b; margin-bottom: 4px; }
+  .summary-card .value { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+  .summary-card .value.green { color: #4ade80; }
+  .summary-card .value.orange { color: #fb923c; }
+  .summary-card .value.blue { color: #38bdf8; }
+  .summary-card .value.red { color: #f87171; }
+  .summary-card .value.purple { color: #c084fc; }
+
+  /* Agent legend */
+  .agent-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .agent-tag { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; color: #fff; }
+
+  /* Controls */
+  .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .controls button { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 6px 14px; border-radius: 5px; cursor: pointer; font-size: 13px; transition: background .15s; }
+  .controls button:hover { background: #334155; }
+  .controls button:disabled { opacity: .4; cursor: default; }
+  .controls select { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; padding: 6px 10px; border-radius: 5px; font-size: 13px; }
+  .controls .turn-info { font-size: 13px; color: #94a3b8; margin-left: auto; }
+
+  /* Scrollable log */
+  .log-container { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; }
+  .log-scroll { max-height: 75vh; overflow-y: auto; padding: 0; }
+  .log-scroll::-webkit-scrollbar { width: 8px; }
+  .log-scroll::-webkit-scrollbar-track { background: #0f172a; }
+  .log-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+  /* Phase header */
+  .phase-header { padding: 10px 16px; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: .8px; border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 2; }
+  .phase-header.free_interaction { background: #1e3a5f; color: #7dd3fc; }
+  .phase-header.election { background: #5b3a1f; color: #fcd34d; }
+  .phase-header.harvesting { background: #1f3d1f; color: #86efac; }
+  .phase-header.round-start { background: #2d1b4e; color: #c4b5fd; }
+
+  /* Turn entry */
+  .turn-entry { display: flex; padding: 8px 16px; border-bottom: 1px solid #1a2332; align-items: flex-start; gap: 10px; transition: background .1s; }
+  .turn-entry:hover { background: #131c2e; }
+  .turn-entry:last-child { border-bottom: none; }
+  .turn-entry.highlight { background: #1a2744; }
+
+  .turn-num { font-size: 11px; color: #475569; min-width: 40px; padding-top: 3px; font-variant-numeric: tabular-nums; }
+  .turn-agent { font-weight: 600; font-size: 13px; min-width: 65px; padding-top: 1px; }
+  .turn-action-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 7px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+  .turn-action-badge.talk { background: #1e3a5f; color: #7dd3fc; }
+  .turn-action-badge.fish { background: #1f3d1f; color: #86efac; }
+  .turn-action-badge.transfer { background: #1f3d1f; color: #4ade80; }
+  .turn-action-badge.pass { background: #292524; color: #a8a29e; }
+  .turn-action-badge.nominate { background: #5b3a1f; color: #fcd34d; }
+  .turn-action-badge.vote { background: #5b3a1f; color: #fcd34d; }
+  .turn-action-badge.create_group { background: #2d1b4e; color: #c4b5fd; }
+  .turn-action-badge.accept_invite { background: #2d1b4e; color: #c4b5fd; }
+  .turn-action-badge.leave_group { background: #2d1b4e; color: #c4b5fd; }
+  .turn-action-badge.reject_invite { background: #2d1b4e; color: #c4b5fd; }
+
+  .turn-body { flex: 1; min-width: 0; font-size: 13px; }
+  .turn-message { color: #cbd5e1; margin-top: 2px; font-style: italic; word-wrap: break-word; }
+  .turn-reasoning { color: #64748b; font-size: 12px; margin-top: 2px; }
+  .turn-resources { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; color: #94a3b8; }
+  .turn-resources .fish-change { }
+  .turn-resources .fish-change.gain { color: #4ade80; }
+  .turn-resources .fish-change.loss { color: #f87171; }
+  .turn-resources .pool-change { color: #38bdf8; }
+  .turn-resources .penalty-badge { color: #fb923c; font-weight: 600; }
+  .turn-resources .limit-badge { color: #c084fc; }
+  .turn-meta { font-size: 11px; color: #475569; margin-top: 2px; }
+  .turn-meta .private-tag { color: #c084fc; }
+  .turn-meta .group-tag { color: #64748b; }
+
+  /* Election result card */
+  .election-result { background: #2d1f0e; border: 1px solid #5b3a1f; border-radius: 6px; padding: 12px 16px; margin: 10px 16px; }
+  .election-result .winner-name { font-size: 16px; font-weight: 700; color: #fcd34d; }
+  .election-result .votes-list { font-size: 13px; color: #a8a29e; margin-top: 4px; }
+  .election-result .platform { font-size: 13px; color: #cbd5e1; margin-top: 4px; font-style: italic; }
+
+  /* Transfer card */
+  .transfer-card { background: #0f2d1a; border: 1px solid #1f5a3a; border-radius: 6px; padding: 10px 16px; margin: 6px 16px; font-size: 13px; }
+  .transfer-card .amount { color: #4ade80; font-weight: 700; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 60px 20px; color: #64748b; }
+  .empty-state h2 { font-size: 20px; margin-bottom: 8px; color: #94a3b8; }
+  .empty-state p { font-size: 14px; margin-bottom: 20px; }
+
+  /* Timeline chart */
+  .timeline-section { margin-top: 20px; }
+  .timeline-section h3 { font-size: 15px; color: #94a3b8; margin-bottom: 8px; }
+  .pool-chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 10px 0; }
+  .pool-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .pool-bar .bar { width: 100%; max-width: 40px; background: linear-gradient(to top, #0284c7, #38bdf8); border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s; }
+  .pool-bar .bar-label { font-size: 10px; color: #64748b; margin-top: 4px; }
+  .pool-bar .bar-value { font-size: 10px; color: #94a3b8; margin-bottom: 2px; }
+
+  /* Fish chart per agent */
+  .fish-chart { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .fish-agent-bar { flex: 1; min-width: 100px; }
+  .fish-agent-bar .agent-name { font-size: 11px; color: #94a3b8; margin-bottom: 2px; }
+  .fish-agent-bar .bar-track { height: 20px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+  .fish-agent-bar .bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+  .fish-agent-bar .bar-fill-label { font-size: 10px; color: #e2e8f0; padding: 0 6px; line-height: 20px; }
+
+  /* Agent colors */
+  .agent-colors { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div>
+      <h1>GovSim Visualizer</h1>
+      <div class="run-id" id="runId">No simulation loaded</div>
+    </div>
+    <label class="file-btn">
+      Load Simulation JSON
+      <input type="file" id="fileInput" accept=".json" style="display:none">
+    </label>
+  </div>
+
+  <div id="emptyState" class="empty-state">
+    <h2>Load a simulation output file</h2>
+    <p>Select a <code>sim_*.json</code> file from the <code>outputs/</code> directory to view a replay of agent interactions, elections, harvests, and resource changes.</p>
+    <p style="font-size:12px;color:#475569">Single-file visualizer &mdash; no backend, no build step.</p>
+  </div>
+
+  <div id="content" style="display:none">
+    <!-- Config bar -->
+    <div id="configBar" class="config-bar"></div>
+
+    <!-- Summary cards -->
+    <div id="summaryRow" class="summary-row"></div>
+
+    <!-- Agent legend -->
+    <div id="agentLegend" class="agent-legend"></div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button id="btnPlay" title="Play/Pause">&#9654; Play</button>
+      <button id="btnPrev" title="Previous turn">&#9664; Prev</button>
+      <button id="btnNext" title="Next turn">Next &#9654;</button>
+      <select id="speedSelect">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="5">5x</option>
+        <option value="10">10x</option>
+      </select>
+      <span id="turnInfo" class="turn-info"></span>
+    </div>
+
+    <!-- Log -->
+    <div class="log-container">
+      <div id="logScroll" class="log-scroll"></div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-section" id="timelineSection">
+      <h3>Pool Level Over Rounds</h3>
+      <div id="poolChart" class="pool-chart"></div>
+      <h3 style="margin-top:16px">Agent Fish Counts (Final Round)</h3>
+      <div id="fishChart" class="fish-chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Agent color map -->
+<div class="agent-colors" id="agentColors"></div>
+
+<script>
+// ─── Agent color palette ───
+const AGENT_COLORS = [
+  '#38bdf8', '#4ade80', '#f87171', '#fbbf24', '#c084fc',
+  '#fb923c', '#22d3ee', '#a78bfa', '#34d399', '#f472b6',
+  '#2dd4bf', '#facc15', '#818cf8', '#e879f9', '#6ee7b7',
+];
+
+// ─── State ───
+let simData = null;
+let allTurns = [];          // flat list of {round, phase, turnData, html}
+let currentTurnIdx = 0;
+let isPlaying = false;
+let playInterval = null;
+let currentHighlight = -1;
+
+// DOM refs
+const fileInput = document.getElementById('fileInput');
+const emptyState = document.getElementById('emptyState');
+const content = document.getElementById('content');
+const runIdEl = document.getElementById('runId');
+const configBar = document.getElementById('configBar');
+const summaryRow = document.getElementById('summaryRow');
+const agentLegend = document.getElementById('agentLegend');
+const logScroll = document.getElementById('logScroll');
+const turnInfo = document.getElementById('turnInfo');
+const poolChart = document.getElementById('poolChart');
+const fishChart = document.getElementById('fishChart');
+const btnPlay = document.getElementById('btnPlay');
+const btnPrev = document.getElementById('btnPrev');
+const btnNext = document.getElementById('btnNext');
+const speedSelect = document.getElementById('speedSelect');
+
+// ─── Data processing ───
+
+function getAgentColor(name, idx) {
+  return AGENT_COLORS[idx % AGENT_COLORS.length];
+}
+
+function getActionBadge(action) {
+  const cls = action === 'fish' ? 'fish' :
+    action === 'transfer' ? 'transfer' :
+    action === 'talk' ? 'talk' :
+    action === 'pass' ? 'pass' :
+    action === 'nominate' ? 'nominate' :
+    action === 'vote' ? 'vote' :
+    (action === 'create_group' || action === 'accept_invite' || action === 'leave_group' || action === 'reject_invite') ? action :
+    'talk';
+  return `<span class="turn-action-badge ${cls}">${action.replace(/_/g, ' ')}</span>`;
+}
+
+function formatAmount(v) {
+  if (v === null || v === undefined) return '';
+  const sign = v > 0 ? '+' : '';
+  return sign + Number(v).toFixed(1);
+}
+
+function computeFishChange(turn) {
+  const before = turn.resources_before || {};
+  const after = turn.resources_after || {};
+  const agent = turn.agent;
+  if (before[agent] !== undefined && after[agent] !== undefined) {
+    return after[agent] - before[agent];
+  }
+  return null;
+}
+
+function formatResources(turn) {
+  const before = turn.resources_before || {};
+  const after = turn.resources_after || {};
+  const agent = turn.agent;
+  const parts = [];
+
+  // Agent fish change
+  if (before[agent] !== undefined && after[agent] !== undefined) {
+    const diff = after[agent] - before[agent];
+    const cls = diff > 0 ? 'gain' : diff < 0 ? 'loss' : '';
+    const sign = diff >= 0 ? '+' : '';
+    parts.push(`<span class="fish-change ${cls}">${agent}: ${Number(before[agent]).toFixed(1)} → ${Number(after[agent]).toFixed(1)} (${sign}${diff.toFixed(1)})</span>`);
+  }
+
+  // Pool change
+  if (before.pool !== undefined && after.pool !== undefined && before.pool !== after.pool) {
+    const diff = after.pool - before.pool;
+    const sign = diff >= 0 ? '+' : '';
+    parts.push(`<span class="pool-change">Pool: ${Number(before.pool).toFixed(1)} → ${Number(after.pool).toFixed(1)} (${sign}${diff.toFixed(1)})</span>`);
+  }
+
+  // Leader limit
+  if (turn.leader_limit !== null && turn.leader_limit !== undefined) {
+    parts.push(`<span class="limit-badge">Limit: ${turn.leader_limit}</span>`);
+  }
+
+  // Penalty
+  if (turn.penalty !== null && turn.penalty !== undefined) {
+    parts.push(`<span class="penalty-badge">Penalty: ${turn.penalty}</span>`);
+  }
+
+  // Transfer target
+  if (turn.action === 'transfer' && turn.target) {
+    parts.push(`<span style="color:#4ade80">→ ${turn.target}</span>`);
+  }
+
+  return parts.length ? `<div class="turn-resources">${parts.join(' ')}</div>` : '';
+}
+
+function formatMeta(turn) {
+  const parts = [];
+  if (turn.is_private) {
+    parts.push(`<span class="private-tag">&#x1f512; Private</span>`);
+  }
+  if (turn.group && turn.group !== 'public') {
+    parts.push(`<span class="group-tag">Group: ${turn.group}</span>`);
+  }
+  if (turn.heard_by && Array.isArray(turn.heard_by)) {
+    parts.push(`<span class="group-tag">Heard by: ${turn.heard_by.join(', ')}</span>`);
+  }
+  return parts.length ? `<div class="turn-meta">${parts.join(' | ')}</div>` : '';
+}
+
+function renderTurnHtml(turn, roundNum, phaseName) {
+  const agent = turn.agent;
+  const agentIdx = agentNames.indexOf(agent);
+  const color = getAgentColor(agent, agentIdx);
+  const actionHtml = getActionBadge(turn.action);
+  const fishChange = computeFishChange(turn);
+  const resourcesHtml = formatResources(turn);
+  const metaHtml = formatMeta(turn);
+
+  // Message or reasoning
+  let extraHtml = '';
+  if (turn.message) {
+    extraHtml += `<div class="turn-message">${escapeHtml(turn.message)}</div>`;
+  }
+  if (turn.reasoning) {
+    extraHtml += `<div class="turn-reasoning">${escapeHtml(turn.reasoning)}</div>`;
+  }
+
+  // Special: transfer card
+  let transferHtml = '';
+  if (turn.action === 'transfer' && turn.target && turn.amount) {
+    transferHtml = `<div class="transfer-card">Transferred <span class="amount">${turn.amount}</span> fish to ${turn.target}</div>`;
+  }
+
+  // Special: election result
+  let electionHtml = '';
+  if (phaseName === 'election' && turn.result) {
+    const r = turn.result;
+    const votesStr = Object.entries(r.votes || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+    electionHtml = `<div class="election-result">
+      <div class="winner-name">Winner: ${r.winner}</div>
+      <div class="votes-list">Votes: ${votesStr}</div>
+      ${r.acceptance_message ? `<div class="platform">Platform: ${escapeHtml(r.acceptance_message)}</div>` : ''}
+    </div>`;
+  }
+
+  return `<div class="turn-entry" data-turn-idx="${turn._idx}" data-phase="${phaseName}">
+    <div class="turn-num">T${turn.turn}</div>
+    <div class="turn-agent" style="color:${color}">${escapeHtml(agent)}</div>
+    <div class="turn-body">
+      ${actionHtml}${transferHtml}${electionHtml}
+      ${extraHtml}
+      ${resourcesHtml}
+      ${metaHtml}
+    </div>
+  </div>`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─── Build flat turn list ───
+let agentNames = [];
+
+function processSimData(data) {
+  // Extract agent names from config
+  agentNames = (data.config && data.config.agents && data.config.agents.names) || [];
+  // Sort by original order
+  simData = data;
+  allTurns = [];
+  let idx = 0;
+
+  // Round start entries
+  for (const round of data.rounds || []) {
+    allTurns.push({
+      _idx: idx++,
+      type: 'round_start',
+      round: round.round,
+      html: `<div class="phase-header round-start">Round ${round.round}</div>`
+    });
+
+    for (const phase of round.phases || []) {
+      const phaseName = phase.phase;
+
+      // Phase header
+      allTurns.push({
+        _idx: idx++,
+        type: 'phase_header',
+        phase: phaseName,
+        round: round.round,
+        html: `<div class="phase-header ${phaseName}">${escapeHtml(phaseName.replace(/_/g, ' '))} — Round ${round.round}</div>`
+      });
+
+      // Election result (if present in phase, not in a turn)
+      if (phaseName === 'election' && phase.result) {
+        const r = phase.result;
+        const votesStr = Object.entries(r.votes || {}).map(([k, v]) => `${k}: ${v}`).join(', ');
+        let electionHtml = `<div class="election-result">
+          <div class="winner-name">Winner: ${r.winner}</div>
+          <div class="votes-list">Votes: ${votesStr}</div>`;
+        if (r.voter_map) {
+          const voterStr = Object.entries(r.voter_map).map(([k, v]) => `${k}→${v}`).join(', ');
+          electionHtml += `<div class="votes-list">Voter map: ${voterStr}</div>`;
+        }
+        if (r.acceptance_message) {
+          electionHtml += `<div class="platform">Platform: ${escapeHtml(r.acceptance_message)}</div>`;
+        }
+        electionHtml += `</div>`;
+        allTurns.push({
+          _idx: idx++,
+          type: 'election_result',
+          round: round.round,
+          html: electionHtml
+        });
+      }
+
+      // Turns
+      for (const turn of phase.turns || []) {
+        turn._idx = idx;
+        const html = renderTurnHtml(turn, round.round, phaseName);
+        allTurns.push({
+          _idx: idx++,
+          type: 'turn',
+          round: round.round,
+          phase: phaseName,
+          turnData: turn,
+          html: html
+        });
+      }
+    }
+  }
+
+  // Add pool timeline
+  buildPoolTimeline(data);
+  buildFishChart(data);
+
+  return allTurns;
+}
+
+// ─── Timeline charts ───
+
+function buildPoolTimeline(data) {
+  const rounds = data.rounds || [];
+  const poolLevels = [];
+  let maxPool = 0;
+
+  for (const r of rounds) {
+    let finalPool = null;
+    for (const p of r.phases || []) {
+      for (const t of p.turns || []) {
+        if (t.resources_after && t.resources_after.pool !== undefined) {
+          finalPool = t.resources_after.pool;
+        }
+      }
+    }
+    if (finalPool !== null) {
+      poolLevels.push({ round: r.round, pool: finalPool });
+      if (finalPool > maxPool) maxPool = finalPool;
+    }
+  }
+
+  if (poolLevels.length === 0) return;
+
+  const capacity = (data.config && data.config.resources && data.config.resources.carrying_capacity) || maxPool;
+  const chartHeight = 100;
+
+  poolChart.innerHTML = poolLevels.map(item => {
+    const pct = Math.max(2, (item.pool / capacity) * 100);
+    return `<div class="pool-bar" title="Round ${item.round}: ${item.pool} fish">
+      <div class="bar-value">${item.pool.toFixed(0)}</div>
+      <div class="bar" style="height:${pct}%"></div>
+      <div class="bar-label">R${item.round}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildFishChart(data) {
+  const rounds = data.rounds || [];
+  const agents = agentNames;
+  if (agents.length === 0) return;
+
+  // Get final fish for each agent
+  const finalFish = {};
+  for (const agent of agents) finalFish[agent] = (data.config && data.config.agents) ? data.config.agents.starting_resources || 0 : 0;
+
+  for (const r of rounds) {
+    for (const p of r.phases || []) {
+      for (const t of p.turns || []) {
+        const after = t.resources_after;
+        if (after && t.agent && after[t.agent] !== undefined) {
+          finalFish[t.agent] = after[t.agent];
+        }
+      }
+    }
+  }
+
+  const maxFish = Math.max(...Object.values(finalFish), 1);
+  const colors = agents.map((a, i) => getAgentColor(a, i));
+
+  fishChart.innerHTML = agents.map((agent, idx) => {
+    const fish = finalFish[agent] || 0;
+    const pct = Math.max(2, (fish / maxFish) * 100);
+    return `<div class="fish-agent-bar">
+      <div class="agent-name" style="color:${colors[idx]}">${escapeHtml(agent)}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${colors[idx]}">
+          <span class="bar-fill-label">${fish.toFixed(1)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Build summary ───
+
+function buildSummary(data) {
+  const config = data.config || {};
+  const simCfg = config.simulation || {};
+  const agCfg = config.agents || {};
+  const resCfg = config.resources || {};
+  const llmCfg = config.llm || {};
+
+  configBar.innerHTML = `
+    <span><strong>Agents:</strong> ${(agCfg.names || []).join(', ')}</span>
+    <span><strong>Rounds:</strong> ${simCfg.num_rounds || data.rounds?.length || '?'}</span>
+    <span><strong>Model:</strong> ${llmCfg.model || '?'}</span>
+    <span><strong>Capacity:</strong> ${resCfg.carrying_capacity || '?'}</span>
+    <span><strong>Regen:</strong> ${resCfg.regeneration_factor || '?'}×</span>
+    <span><strong>Default limit:</strong> ${(config.leader && config.leader.default_limit) || '?'}</span>
+    <span><strong>Survival:</strong> ${data.survival_length || data.rounds?.length || 0} rounds</span>
+  `;
+
+  // Summary cards
+  const lastRound = data.metrics?.by_round?.slice(-1)?.[0] || {};
+  const totalHarvest = (data.metrics?.by_round || []).reduce((s, r) => s + (r.total_harvest || 0), 0);
+  const totalViolations = (data.metrics?.by_round || []).reduce((s, r) => s + (r.violations || 0), 0);
+  const totalPenalties = (data.metrics?.by_round || []).reduce((s, r) => s + (r.penalties_imposed || 0), 0);
+  const finalPool = lastRound.pool_remaining;
+  const gini = lastRound.gini_coefficient;
+  const numTransfers = allTurns.filter(t => t.turnData && t.turnData.action === 'transfer').length;
+
+  // Get top-level election info
+  const electionWinners = new Set();
+  for (const r of data.rounds || []) {
+    for (const p of r.phases || []) {
+      if (p.phase === 'election' && p.result && p.result.winner) {
+        electionWinners.add(p.result.winner);
+      }
+    }
+  }
+  const winnersStr = electionWinners.size ? [...electionWinners].join(', ') : 'None';
+
+  summaryRow.innerHTML = `
+    <div class="summary-card"><div class="label">Total Harvest</div><div class="value green">${totalHarvest.toFixed(0)}</div></div>
+    <div class="summary-card"><div class="label">Final Pool</div><div class="value blue">${finalPool !== undefined ? finalPool.toFixed(0) : '?'}</div></div>
+    <div class="summary-card"><div class="label">Gini Coeff</div><div class="value ${gini > 0.3 ? 'orange' : 'green'}">${gini !== undefined ? gini.toFixed(3) : '?'}</div></div>
+    <div class="summary-card"><div class="label">Transfers</div><div class="value purple">${numTransfers}</div></div>
+    <div class="summary-card"><div class="label">Violations</div><div class="value ${totalViolations > 0 ? 'red' : 'green'}">${totalViolations}</div></div>
+    <div class="summary-card"><div class="label">Penalties</div><div class="value ${totalPenalties > 0 ? 'orange' : 'green'}">${totalPenalties}</div></div>
+    <div class="summary-card"><div class="label">Elected</div><div class="value" style="font-size:16px;color:#fcd34d">${winnersStr}</div></div>
+  `;
+
+  // Agent legend
+  agentLegend.innerHTML = agentNames.map((name, idx) => {
+    const color = getAgentColor(name, idx);
+    return `<span class="agent-tag" style="background:${color}">${escapeHtml(name)}</span>`;
+  }).join('');
+}
+
+// ─── Rendering ───
+
+function renderVisibleTurns() {
+  if (!allTurns.length) return;
+
+  const html = allTurns.map(t => t.html).join('');
+  logScroll.innerHTML = html;
+
+  updateTurnInfo();
+  scrollToCurrent();
+}
+
+function scrollToCurrent() {
+  if (currentTurnIdx < 0 || currentTurnIdx >= allTurns.length) return;
+  const entries = logScroll.querySelectorAll('.turn-entry');
+  // Find the closest turn entry at or before currentTurnIdx
+  let targetIdx = -1;
+  for (let i = allTurns.length - 1; i >= 0; i--) {
+    if (allTurns[i].type === 'turn' && i <= currentTurnIdx) {
+      targetIdx = i;
+      break;
+    }
+  }
+  if (targetIdx >= 0) {
+    const el = logScroll.querySelector(`[data-turn-idx="${targetIdx}"]`);
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      el.classList.add('highlight');
+    }
+  }
+}
+
+function updateTurnInfo() {
+  const totalTurns = allTurns.filter(t => t.type === 'turn').length;
+  const visibleTurns = allTurns.filter(t => t.type === 'turn');
+  const currentTurn = allTurns[currentTurnIdx];
+  if (currentTurn && currentTurn.turnData) {
+    const td = currentTurn.turnData;
+    turnInfo.textContent = `Round ${currentTurn.round} | ${currentTurn.phase.replace(/_/g, ' ')} | Turn ${td.turn} | ${td.agent}`;
+  } else if (currentTurn) {
+    turnInfo.textContent = currentTurn.type.replace(/_/g, ' ');
+  } else {
+    turnInfo.textContent = `0 / ${totalTurns} turns`;
+  }
+}
+
+// ─── Playback controls ───
+
+function goToTurn(idx) {
+  if (idx < 0) idx = 0;
+  if (idx >= allTurns.length) {
+    idx = allTurns.length - 1;
+    pausePlayback();
+  }
+  currentTurnIdx = idx;
+
+  // Remove old highlights
+  logScroll.querySelectorAll('.turn-entry.highlight').forEach(el => el.classList.remove('highlight'));
+
+  // Highlight current turn
+  const currentEntry = allTurns[idx];
+  if (currentEntry && currentEntry.type === 'turn') {
+    const el = logScroll.querySelector(`[data-turn-idx="${idx}"]`);
+    if (el) el.classList.add('highlight');
+  }
+
+  // Scroll into view: try current target, fallback to nearest turn
+  const entries = logScroll.querySelectorAll('.turn-entry');
+  let scrollTarget = null;
+  let minDist = Infinity;
+  entries.forEach(el => {
+    const tidx = parseInt(el.dataset.turnIdx);
+    if (!isNaN(tidx) && tidx <= idx && (idx - tidx) < minDist) {
+      minDist = idx - tidx;
+      scrollTarget = el;
+    }
+  });
+  if (scrollTarget) {
+    scrollTarget.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  updateTurnInfo();
+}
+
+function nextTurn() {
+  let next = currentTurnIdx + 1;
+  // Skip non-turn entries unless we want to see them
+  // For auto-play, step through ALL entries (including headers)
+  if (next < allTurns.length) {
+    goToTurn(next);
+  } else {
+    pausePlayback();
+  }
+}
+
+function prevTurn() {
+  let prev = currentTurnIdx - 1;
+  if (prev >= 0) {
+    goToTurn(prev);
+  }
+}
+
+function togglePlayback() {
+  if (isPlaying) {
+    pausePlayback();
+  } else {
+    startPlayback();
+  }
+}
+
+function startPlayback() {
+  if (currentTurnIdx >= allTurns.length - 1) {
+    goToTurn(0);
+  }
+  isPlaying = true;
+  btnPlay.innerHTML = '&#9646;&#9646; Pause';
+  const speed = parseInt(speedSelect.value) || 1;
+  const delay = Math.max(100, 800 / speed);
+  playInterval = setInterval(() => {
+    nextTurn();
+    if (currentTurnIdx >= allTurns.length - 1) {
+      pausePlayback();
+    }
+  }, delay);
+}
+
+function pausePlayback() {
+  isPlaying = false;
+  btnPlay.innerHTML = '&#9654; Play';
+  if (playInterval) {
+    clearInterval(playInterval);
+    playInterval = null;
+  }
+}
+
+// ─── File loading ───
+
+fileInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      loadSimulation(data);
+    } catch (err) {
+      alert('Error parsing JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+function loadSimulation(data) {
+  pausePlayback();
+  processSimData(data);
+  runIdEl.textContent = data.run_id || 'Unknown run';
+  emptyState.style.display = 'none';
+  content.style.display = 'block';
+  buildSummary(data);
+  renderVisibleTurns();
+  goToTurn(0);
+}
+
+// ─── Event bindings ───
+
+btnPlay.addEventListener('click', togglePlayback);
+btnNext.addEventListener('click', nextTurn);
+btnPrev.addEventListener('click', prevTurn);
+
+speedSelect.addEventListener('change', function() {
+  if (isPlaying) {
+    pausePlayback();
+    startPlayback();
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (!simData) return;
+  if (e.key === ' ' || e.key === 'Space') {
+    e.preventDefault();
+    togglePlayback();
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    nextTurn();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    prevTurn();
+  }
+});
+
+// ─── Drag-and-drop support ───
+
+document.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  document.body.style.borderColor = '#38bdf8';
+});
+document.addEventListener('dragleave', function(e) {
+  document.body.style.borderColor = '';
+});
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  document.body.style.borderColor = '';
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.json')) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        loadSimulation(data);
+      } catch (err) {
+        alert('Error parsing JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+});
+
+console.log('GovSim Visualizer loaded. Click "Load Simulation JSON" to get started.');
+</script>
+</body>
+</html>

@@ -119,6 +119,7 @@ def main():
             carrying_capacity=config["resources"].get("carrying_capacity", 100.0),
             default_limit=config["leader"].get("default_limit", 10.0),
             default_penalty_rate=config["leader"].get("default_penalty_rate", 0.0),
+            post_harvest_interaction=config["simulation"].get("post_harvest_interaction", True),
         )
 
     # Wrap in RecordingLLM if --record-prompts
