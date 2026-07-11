@@ -216,7 +216,7 @@ class DeepSeekLLM(LLMInterface):
             "\n"
             "=== ELECTION DETAILS ===\n"
             f"- You can CHOOSE to run for leader (costs {self.candidacy_cost:.0f} fish) or pass.\n"
-            "- Each candidate proposes a harvest limit (1-20) and penalty rate (0-5x).\n"
+            "- Each candidate proposes a harvest limit and penalty rate.\n"
             "- All agents vote secretly. The candidate with the most votes wins.\n"
             "- The winner\u2019s harvest limit and penalty rate are enforced during harvest.\n"
             "- If NO one runs for leader, the DEFAULT harvest limit is "

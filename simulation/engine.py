@@ -845,7 +845,7 @@ class Engine:
             leader_penalty=self.leader_penalty_rate,
             pool_status=self._pool_status(),
             harvest_this_round=harvest_this_round,
-            memory_context=self._build_round_history() + pending_invites_str + self._build_memory_context(agent),
+            memory_context=pending_invites_str + self._build_memory_context(agent),
             personality=agent.personality,
             last_action=last_action,
             phase_context=self._phase_context,
@@ -1038,7 +1038,7 @@ class Engine:
 
         # Find the max round number present
         max_round = max(e.get("round", 0) or 0 for e in log_entries)
-        min_round = max_round  # last 1 round only
+        min_round = max(1, max_round - 1)  # last 2 rounds
 
         log_lines = ["--- YOUR LOG ---"]
         current_round_shown = None
@@ -1074,11 +1074,11 @@ class Engine:
         if len(log_lines) > 1:
             parts.append("\n".join(log_lines))
 
-        # 3. Personal reflections (last 1 round only)
+        # 3. Personal reflections (all)
         reflections = [m for m in agent.memories if m.type == "reflection"]
         if reflections:
             lines = ["--- YOUR REFLECTIONS ---"]
-            for m in reflections[-1:]:
+            for m in reflections:
                 lines.append(f"  {m.content}")
             parts.append("\n".join(lines))
 

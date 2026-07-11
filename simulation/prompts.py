@@ -115,7 +115,7 @@ def build_campaign_prompt(
         f"\nYour fish: {resources:.1f} | Lake: {pool_status}"
         f"\nOpponents: {', '.join(opponents)}"
         f"\n{memory_context}"
-        f"\nPropose harvest limit (1-20) and penalty rate (0-5)."
+        f"\nPropose a harvest limit and penalty rate based on the lake's size."
         f"\nReply JSON: {{\"harvest_limit\":N, \"penalty_rate\":N, \"message\":\"...\", \"reasoning\":\"...\"}}"
     )
 
