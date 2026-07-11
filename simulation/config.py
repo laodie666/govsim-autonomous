@@ -14,6 +14,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "simulation": {
         "num_rounds": 4,
         "turns_per_phase": 10,
+        "post_harvest_interaction": True,  # backward compatible; disable in YAML for faster runs
     },
     "agents": {
         "names": ["Alice", "Bob", "Charlie", "Diana", "Eve"],

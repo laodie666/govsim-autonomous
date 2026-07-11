@@ -275,13 +275,14 @@ class Engine:
             self.recorder.set_channel_snapshot(self._capture_channel_snapshot())
             self._dissolve_private_channels()
 
-            # Phase 4: Post-Harvest Interaction
-            self._phase_context = "Discuss what happened and plan for next round."
-            print(f"[sim]   Phase: Post-Harvest Interaction...")
-            self._log_to_all("phase_marker", {"phase": "discussion"})
-            self._run_free_interaction()
-            self.recorder.set_channel_snapshot(self._capture_channel_snapshot())
-            self._dissolve_private_channels()
+            # Phase 4: Post-Harvest Interaction (optional)
+            if self.config["simulation"].get("post_harvest_interaction", True):  # default True for backward compat (tests); YAML can set false
+                self._phase_context = "Discuss what happened and plan for next round."
+                print(f"[sim]   Phase: Post-Harvest Interaction...")
+                self._log_to_all("phase_marker", {"phase": "discussion"})
+                self._run_free_interaction()
+                self.recorder.set_channel_snapshot(self._capture_channel_snapshot())
+                self._dissolve_private_channels()
 
             # Record end-of-round metrics
             self._record_round_metrics()
