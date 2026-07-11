@@ -1,6 +1,6 @@
 # GovSim-Autonomous — Agent Reference
 
-> **Purpose:** Single source of truth for implementer agents working on govsim-autonomous. Current state after Phase 7: 332 tests passing, prompt system/user split, personality-driven agents, full prompt recording.
+> **Purpose:** Single source of truth for implementer agents working on govsim-autonomous. Current state: 334 tests passing, last-2-rounds memory context, optional post-harvest phase, no hardcoded limit range in prompts.
 
 ---
 
@@ -10,12 +10,10 @@
 
 **Tech stack:**
 - Python 3.11+
-- pytest 7.x (332 tests)
+- pytest 7.x (334 tests)
 - DeepSeek LLM via OpenAI-compatible SDK
 - YAML configs via `pyyaml`
 - Plain dataclasses, no async, no web framework
-
-**Design by:** Jinesis
 
 ---
 
@@ -40,7 +38,7 @@ simulation/
 └── resource_pool.py    ResourcePool — fish(), regenerate(), collapse detection
 ```
 
-### 2.2 `tests/` — 332 tests
+### 2.2 `tests/` — 334 tests
 
 ```
 tests/
@@ -80,6 +78,7 @@ The prompt is split across **system** and **user** messages:
 - World rules (lake regenerates, collapse at < 0.01, leader sets policy)
 - All available actions with channel visibility rules
 - JSON response format
+- **No hardcoded harvest limit range** — agents infer appropriate limits from pool size (removed `(1-20)`)
 
 **User prompt** (dynamic, 300-700 chars, in `prompts.py`):
 - Identity: `"You are Sage. Round 1, free interaction."`
@@ -116,12 +115,15 @@ Round N:
      - Penalty applied if over leader's limit
      - Pool collapse check (if pool < 0.01, game ends)
      Channels dissolve at end
-  4. Post-harvest free_interaction
-     - Phase context: "Discuss what happened and plan for next round."
+  4. Post-harvest free_interaction (optional)
+     - Controlled by `post_harvest_interaction` config flag (default: True)
+     - Disabled in scarcity_run.yaml to eliminate repetitive filler
+     Theme: "Discuss what happened and plan for next round."
      Channels dissolve at end
   5. Reflection phase
      - Each agent produces free-text reflection + plan (type="reflection" memories)
      - Injected into next round's prompt as "--- YOUR REFLECTIONS ---"
+     - All reflections are shown (not just the last one)
 ```
 
 ### 3.4 Visibility Rules
@@ -171,7 +173,10 @@ Round N:
 | **Personality-driven agents** | `config/personalities_run.yaml`, injected via `agent.personality` |
 | **Penalty destinations** (`leader_stash`, `redistribute`, `destroyed`) | `leader.py:distribute_fine`, tested end-to-end |
 | **`_extract_json` edge case handling** | `llm_client.py:_extract_json` — fences, nested, arrays, plain numbers |
-| **332 tests** (from 258) | All passing |
+| **Last-2-rounds memory context** | `engine.py` — personal log shows last 2 rounds, all reflections shown |
+| **Optional post-harvest phase** | `engine.py` — skippable via `post_harvest_interaction` config flag |
+| **No hardcoded limit range** | `llm_client.py`, `prompts.py` — removed `(1-20)` from system and campaign prompts |
+| **334 tests** (from 258) | All passing |
 
 ### 4.3 Action aliases
 
@@ -296,27 +301,39 @@ The engine deducts `candidacy_cost` from candidates. All agents are candidates b
 ## 7. Quick Reference
 
 ```bash
-# Run
+# Run (scarcity config — 80 cap, no post-harvest)
+python -m simulation.main --config config/scarcity_run.yaml --seed 42 --verbose
+
+# Run (standard config)
 python -m simulation.main --config config/personalities_run.yaml --seed 42 --verbose
 
 # Run with prompt recording
-python -m simulation.main --config config/personalities_run.yaml --seed 42 --record-prompts
+python -m simulation.main --config config/scarcity_run.yaml --seed 42 --record-prompts
 
 # Run with stub (test without API)
-python -m simulation.main --config config/personalities_run.yaml --stub --verbose
+python -m simulation.main --config config/scarcity_run.yaml --stub --verbose
 
 # Run all tests
 python -m pytest tests/ -v
 
-# Run integration tests
-python -m pytest tests/test_integrated_pipeline.py -v
+# Run memory context tests
+python -m pytest tests/test_memory_context.py -v
 
 # Run with coverage
 python -m pytest tests/ --cov=simulation -v
 ```
 
-### Key config: `config/personalities_run.yaml`
+### Key configs
 
+**`config/scarcity_run.yaml`** (current focus)
+- 80 carrying capacity, 1.2x regeneration (tight resources)
+- 4 rounds, 8 turns per phase
+- Candidacy cost 20, penalties to leader_stash
+- Post-harvest interaction disabled
+- Model: `deepseek/deepseek-chat` (better OpenRouter routing)
+- 5 agents: Sage (conservation), River (pragmatic), Ash (greedy), Quinn (coalition-builder), Kai (cautious)
+
+**`config/personalities_run.yaml`** (standard)
 - 5 agents with distinct behavioral personalities
 - 3 rounds, 8 turns per phase
 - 200 carrying capacity, 2x regeneration
