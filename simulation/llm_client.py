@@ -81,6 +81,7 @@ class DeepSeekLLM(LLMInterface):
         default_limit: float = 10.0,
         default_penalty_rate: float = 0.0,
         post_harvest_interaction: bool = True,
+        reasoning_effort: str | None = None,
     ):
         self.model = model
         self.temperature = temperature
@@ -96,6 +97,7 @@ class DeepSeekLLM(LLMInterface):
         self.default_limit = default_limit
         self.default_penalty_rate = default_penalty_rate
         self.post_harvest_interaction = post_harvest_interaction
+        self.reasoning_effort = reasoning_effort
 
         import httpx
         self.client = OpenAI(
@@ -188,7 +190,7 @@ class DeepSeekLLM(LLMInterface):
             ],
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            extra_body=None,
+            extra_body=None if not self.reasoning_effort else {"reasoning": {"effort": self.reasoning_effort}},
         )
         elapsed_ms = (time.time() - start) * 1000
         content = response.choices[0].message.content or ""
