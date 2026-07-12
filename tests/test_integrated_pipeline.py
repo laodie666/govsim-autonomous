@@ -1117,8 +1117,7 @@ class TestRecorderOutputIntegration:
         # Agent memories populated
         for aid in ("alice", "bob"):
             assert aid in output["agent_memories"]
-            # Should have at least round_summary memories
-            assert len(output["agent_memories"][aid]) >= 1
+            # round_summary memories were removed (unused LLM call + dead data)
 
         # Personal logs populated
         for aid in ("alice", "bob"):

@@ -277,3 +277,34 @@ class TestPersonalityInPrompt:
         )
         assert "Personality:" in prompt
         assert "cautious" in prompt
+
+    def test_vote_prompt_includes_voter_personality(self):
+        """Voter's own personality appears in the vote prompt."""
+        candidates = [{"name": "Ash", "harvest_limit": 40.0, "penalty_rate": 3.0,
+                       "message": "more fish for all"}]
+        prompt = build_vote_prompt(
+            agent_name="Sage", candidates=candidates,
+            memory_context="", resources=30.0, personality="long-term conservationist",
+        )
+        assert "conservationist" in prompt
+
+    def test_vote_prompt_includes_candidate_personalities(self):
+        """Each candidate's personality is shown so voters can judge trust."""
+        candidates = [
+            {"name": "Ash", "harvest_limit": 40.0, "penalty_rate": 3.0, "message": "",
+             "personality": "selfish and greedy"},
+            {"name": "Sage", "harvest_limit": 5.0, "penalty_rate": 2.0, "message": "",
+             "personality": "long-term conservationist"},
+        ]
+        prompt = build_vote_prompt(
+            agent_name="River", candidates=candidates, resources=30.0,
+        )
+        assert "selfish and greedy" in prompt
+        assert "conservationist" in prompt
+
+    def test_vote_prompt_omits_personality_when_absent(self):
+        """Backward compat: no personality section when none provided."""
+        candidates = [{"name": "Ash", "harvest_limit": 40.0, "penalty_rate": 3.0, "message": ""}]
+        prompt = build_vote_prompt(agent_name="Sage", candidates=candidates, resources=30.0)
+        assert "Ash" in prompt
+        assert "vote_for" in prompt

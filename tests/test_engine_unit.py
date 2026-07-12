@@ -4,6 +4,8 @@ Phase 7-10: Tests 27-44 from the specification.
 All tests use StubLLM for deterministic, LLM-free execution.
 """
 
+import threading
+
 import pytest
 from simulation.engine import Engine
 from simulation.llm_interface import StubLLM
@@ -463,6 +465,80 @@ class TestElectionAndLeader:
         assert engine.get_agent("bob").resources == 8.0, \
             "Bob's resources should be 8.0 (3.0 start + 5.0 harvest, no candidacy deduction)"
 
+    def test_nomination_runs_in_parallel(self, election_config, monkeypatch):
+        """Nomination calls are dispatched concurrently, not sequentially."""
+        config = election_config
+        engine = Engine(config, llm=StubLLM(), seed=42)
+
+        call_threads = []
+        barrier = threading.Barrier(len(config["agents"]["names"]))
+
+        def fake_nominate(prompt):
+            call_threads.append(threading.get_ident())
+            barrier.wait(timeout=5)
+            return True
+
+        monkeypatch.setattr(engine.llm, "nominate", fake_nominate)
+
+        engine._reset_round_state()
+        engine.current_round = 1
+        engine.recorder.start_round(1)
+        engine._run_election()
+
+        assert len(set(call_threads)) == len(config["agents"]["names"]), \
+            f"Expected {len(config['agents']['names'])} distinct threads, got {len(set(call_threads))}"
+
+    def test_no_leader_fallback_penalizes_violations(self):
+        """With default_penalty_rate > 0, a no-candidate round still punishes over-harvest."""
+        config = load_config({
+            "simulation": {"num_rounds": 1, "turns_per_phase": 1, "post_harvest_interaction": False},
+            "agents": {"names": ["Alice", "Bob"], "starting_resources": 3.0},
+            "resources": {"carrying_capacity": 100.0, "regeneration_factor": 1.5},
+            "leader": {"fine_destination": "common_pool",
+                       "default_limit": 5.0, "default_penalty_rate": 1.0, "candidacy_cost": 5.0},
+            "election": {"method": "plurality", "elections_every_round": True},
+        })
+        # free: 2 passes; harvest: Alice takes 10 (over limit 5)
+        stub = StubLLM([
+            {"action": "pass", "reasoning": "."}, {"action": "pass", "reasoning": "."},
+            {"action": "fish", "amount": 10.0, "reasoning": "."},
+            {"action": "fish", "amount": 0.0, "reasoning": "."},
+        ])
+        engine = Engine(config, llm=stub, seed=42)
+        engine.run()
+        # Alice over-harvested 5; penalty = (10-5)*1 = 5
+        assert engine._total_penalties_amount == 5.0
+
+    def test_elections_run_every_round_with_affordable_candidacy(self):
+        """Over 3 rounds with affordable candidacy_cost, a leader is elected each round."""
+        config = load_config({
+            "simulation": {"num_rounds": 3, "turns_per_phase": 1, "post_harvest_interaction": False},
+            "agents": {"names": ["Alice", "Bob", "Charlie"], "starting_resources": 50.0},
+            "resources": {"carrying_capacity": 200.0, "regeneration_factor": 2.0},
+            "leader": {"fine_destination": "common_pool", "default_limit": 10.0,
+                       "default_penalty_rate": 1.0, "candidacy_cost": 5.0},
+            "election": {"method": "plurality", "elections_every_round": True},
+        })
+        # Per round: 3 free (decide) + 3 campaign + 3 vote + 3 fish = 12 consuming calls
+        # 3 rounds = 36 total
+        all_responses = []
+        for _ in range(3):
+            for _ in range(3):
+                all_responses.append(pass_response())        # free interaction (3)
+            for _ in range(3):
+                all_responses.append(campaign_response())     # campaign (3)
+            for _ in range(3):
+                all_responses.append(vote_response("alice"))  # vote (3)
+            for _ in range(3):
+                all_responses.append(fish_response(5.0))       # harvest (3)
+
+        stub = StubLLM(all_responses)
+        engine = Engine(config, llm=stub, seed=42)
+        engine.run()
+
+        leaders = [r.get("leader") for r in engine.round_summaries]
+        assert all(leaders), f"Expected a leader every round, got {leaders}"
+
     def test_vote_not_in_other_personal_logs(self):
         """A non-voter should NOT see another agent's vote in their personal log."""
         config = load_config({
@@ -705,6 +781,15 @@ class TestMemoryContext:
         assert "YOUR MEMORIES" not in context, "round_summary should not appear in memory context"
         # Reflections should still appear
         assert "YOUR LOG" in context
+
+    def test_no_summarize_llm_call_made(self, default_config, monkeypatch):
+        """The engine never calls llm.summarize (it was unused post-hoc prose)."""
+        engine = Engine(default_config, llm=StubLLM(), seed=42)
+        called = []
+        monkeypatch.setattr(engine.llm, "summarize",
+                            lambda p: called.append(p) or "should not be called")
+        engine.run()
+        assert called == [], f"summarize was called {len(called)} time(s); expected 0"
 
 
 class TestPoolRegeneration:

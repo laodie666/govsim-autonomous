@@ -125,28 +125,33 @@ def build_vote_prompt(
     candidates: list[dict],
     memory_context: str = "",
     resources: float = 0.0,
+    personality: str | None = None,
 ) -> str:
     """Build the prompt for a voting decision.
 
-    candidates: list of {name, harvest_limit, penalty_rate, message}
+    candidates: list of {name, harvest_limit, penalty_rate, message, personality?}
     """
     lines = [f"You are {agent_name}, voting for leader."]
+    if personality:
+        lines.append(f"Personality: {personality}")
     if resources > 0:
         lines.append(f"Your fish: {resources:.1f}")
 
+    if memory_context:
+        lines.append("")
+        lines.append(memory_context)
+
     lines.append(f"\n--- CANDIDATES ---")
     for c in candidates:
-        lines.append(f"[{c['name']}] limit={c['harvest_limit']:.1f}, penalty={c['penalty_rate']:.1f}x")
+        entry = f"[{c['name']}] limit={c['harvest_limit']:.1f}, penalty={c['penalty_rate']:.1f}x"
+        if c.get("personality"):
+            entry += f'  Trait: "{c["personality"]}"'
+        lines.append(entry)
         if c.get("message"):
             lines.append(f'  Says: "{c["message"]}"')
-        lines.append("")
-
-    if memory_context:
-        lines.append(memory_context)
-        lines.append("")
 
     lines.append(
-        "Reply JSON: {\"vote_for\":\"candidate_id\", \"reasoning\":\"...\"}"
+        "\nReply JSON: {\"vote_for\":\"candidate_id\", \"reasoning\":\"...\"}"
     )
     return "\n".join(lines)
 

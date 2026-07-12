@@ -1089,9 +1089,11 @@ class Engine:
         self.current_phase = "election"
         self.recorder.start_phase("election")
 
-        # Phase 0: Nomination — ask each eligible agent if they want to run
+        # Phase 0: Nomination in parallel (read-only), deduct sequentially
         candidacy_cost = self.config["leader"].get("candidacy_cost", 5.0)
-        candidates = []
+
+        # Separate eligible agents (can afford cost) from ineligible
+        eligible = []
         for agent in self.agent_list:
             if agent.resources < candidacy_cost:
                 if self.verbose:
@@ -1099,13 +1101,26 @@ class Engine:
                 agent.add_log_entry(round_num=self.current_round, turn=self.turn_counter, phase=self.current_phase,
                     type="system",
                     data={"text": f"Cannot afford candidacy cost of {candidacy_cost:.0f} fish (have {agent.resources:.0f})"})
-                continue
+            else:
+                eligible.append(agent)
 
-            # Ask agent if they want to run
-            ctx = self._build_nomination_context(agent, candidacy_cost)
-            wants_to_run = self.llm.nominate(ctx)
+        # Ask agents if they want to run — in parallel (read-only)
+        nomination_results: dict[str, bool] = {}
+        if eligible:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(eligible)) as ex:
+                def _nominate(a):
+                    ctx = self._build_nomination_context(a, candidacy_cost)
+                    return a.id, self.llm.nominate(ctx)
+                futures = {ex.submit(_nominate, a): a for a in eligible}
+                for f in concurrent.futures.as_completed(futures):
+                    aid, wants_to_run = f.result()
+                    nomination_results[aid] = wants_to_run
+
+        # Sequential: deduct + build candidate list + log (writes, must be sequential)
+        candidates = []
+        for agent in eligible:
             self.turn_counter += 1
-
+            wants_to_run = nomination_results.get(agent.id, False)
             if wants_to_run:
                 agent.deduct_resources(candidacy_cost)
                 candidates.append(agent)
@@ -1239,6 +1254,7 @@ class Engine:
                 "harvest_limit": p.harvest_limit if p else 0,
                 "penalty_rate": p.penalty_rate if p else 0,
                 "message": p.message if p else "",
+                "personality": c.personality,
             })
 
         return build_vote_prompt(
@@ -1246,6 +1262,7 @@ class Engine:
             candidates=candidate_dicts,
             memory_context=self._build_memory_context(voter),
             resources=voter.resources,
+            personality=voter.personality,
         )
 
     def _build_nomination_context(self, agent: Agent, candidacy_cost: float) -> str:
@@ -1502,65 +1519,10 @@ class Engine:
             "pool_start": self._pool_start,
             "pool_end": pool_end,
             "agent_results": agent_results,
+            "llm_summary": "",
         }
 
-        # Generate LLM summary
-        summary_text = self._summarize_round(summary)
-        summary["llm_summary"] = summary_text
-
         self.round_summaries.append(summary)
-
-        # Store in each agent's memory
-        for agent in self.agent_list:
-            agent.add_memory(
-                turn=self.turn_counter,
-                type="round_summary",
-                content=summary_text,
-                significance="round_summary",
-                emotional_impact="neutral",
-            )
-
-    def _summarize_round(self, summary: dict) -> str:
-        """Ask the LLM to generate a concise round summary."""
-        prompt = self._build_summary_prompt(summary)
-        return self.llm.summarize(prompt)
-
-    def _build_summary_prompt(self, summary: dict) -> str:
-        """Build a prompt asking the LLM to summarize the round."""
-        rnd = summary["round"]
-        leader = summary.get("leader", "None")
-        pool_s = summary["pool_start"]
-        pool_e = summary["pool_end"]
-        platform = summary.get("leader_platform")
-
-        lines = [
-            "Summarize what happened this round in 2-3 sentences. Key facts:",
-            f"Leader: {leader}",
-        ]
-        if platform:
-            lines.append(f"Leader platform: limit={platform['harvest_limit']}, penalty_rate={platform['penalty_rate']}")
-        lines.append(f"Pool: {pool_s:.0f} -> {pool_e:.0f} fish")
-        lines.append("Agent harvests:")
-        for aid, ar in summary["agent_results"].items():
-            name = self.agents.get(aid, None)
-            name_str = name.name if name else aid
-            flags = []
-            if ar.get("violated"):
-                flags.append(f"VIOLATED (penalty={ar.get('penalty', 0):.0f} fish to {ar.get('penalty_destination', '?')})")
-            flag_str = " " + " ".join(flags) if flags else ""
-            lines.append(f"  - {name_str}: {ar['harvested']:.0f} fish{flag_str}")
-
-        # Include conversation highlights (last few messages)
-        if self.conversation_log:
-            recent = self.conversation_log[-6:]
-            lines.append("Recent conversation:")
-            for entry in recent:
-                aide = entry["agent"]
-                a = self.agents.get(aide, None)
-                name_str = a.name if a else aide
-                lines.append(f"  [{name_str}]: \"{entry['message']}\"")
-
-        return "\n".join(lines)
 
     def _set_recorder_metadata(self) -> None:
         """Populate recorder with round summaries, agent memories, and personal logs."""
