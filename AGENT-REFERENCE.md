@@ -1,6 +1,6 @@
 # GovSim-Autonomous — Agent Reference
 
-> **Purpose:** Single source of truth for implementer agents working on govsim-autonomous. Current state: 334 tests passing, last-2-rounds memory context, optional post-harvest phase, no hardcoded limit range in prompts.
+> **Purpose:** Single source of truth for implementer agents working on govsim-autonomous. Current state: 334 tests passing, last-2-rounds memory context, optional post-harvest phase, no hardcoded limit range, reasoning model support (high/xhigh effort).
 
 ---
 
@@ -79,6 +79,7 @@ The prompt is split across **system** and **user** messages:
 - All available actions with channel visibility rules
 - JSON response format
 - **No hardcoded harvest limit range** — agents infer appropriate limits from pool size (removed `(1-20)`)
+- **Reasoning** — V4 Flash accepts `extra_body: {reasoning: {effort: high|xhigh}}` for chain-of-thought
 
 **User prompt** (dynamic, 300-700 chars, in `prompts.py`):
 - Identity: `"You are Sage. Round 1, free interaction."`
@@ -176,9 +177,21 @@ Round N:
 | **Last-2-rounds memory context** | `engine.py` — personal log shows last 2 rounds, all reflections shown |
 | **Optional post-harvest phase** | `engine.py` — skippable via `post_harvest_interaction` config flag |
 | **No hardcoded limit range** | `llm_client.py`, `prompts.py` — removed `(1-20)` from system and campaign prompts |
+| **Reasoning model support** | `llm_client.py` — `reasoning_effort` param (high/xhigh), attached via `extra_body` |
 | **334 tests** (from 258) | All passing |
 
-### 4.3 Action aliases
+### 4.3 Reasoning Model Behavior
+
+V4 Flash with `reasoning_effort: high` produces notably different behavior:
+
+- **Strategic passing** — agents deliberately stay quiet when they have nothing new to say, vs non-reasoning which talks every turn and repeats itself
+- **Better deal reasoning** — agents explicitly think through vote trades: "If I transfer 5 fish to Kai now, they'll vote for me and I'll set limit 5"
+- **Safety bias** — reasoning can over-ride personality prompts; even "greedy" Ash sometimes harvests 0 because the model thinks "taking fish is harmful"
+- **Seed sensitivity** — outcomes vary dramatically by seed (seed 42 produced 26 total fish, seed 99 produced 245)
+- **Latency** — mean ~10s vs ~5s without reasoning; set timeout to 40s
+- **Token cost** — reasoning tokens count as output, ~2x tokens per call
+
+### 4.4 Action aliases
 
 ```python
 # engine.py:94-121
@@ -330,7 +343,7 @@ python -m pytest tests/ --cov=simulation -v
 - 4 rounds, 8 turns per phase
 - Candidacy cost 20, penalties to leader_stash
 - Post-harvest interaction disabled
-- Model: `deepseek/deepseek-chat` (better OpenRouter routing)
+- Model: `deepseek/deepseek-v4-flash` with `reasoning_effort: high`
 - 5 agents: Sage (conservation), River (pragmatic), Ash (greedy), Quinn (coalition-builder), Kai (cautious)
 
 **`config/personalities_run.yaml`** (standard)
